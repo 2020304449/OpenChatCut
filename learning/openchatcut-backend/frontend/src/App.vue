@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import AssetPanel from './components/AssetPanel.vue'
 import ChatPanel from './components/ChatPanel.vue'
 import TimelineView from './components/TimelineView.vue'
 import ToolCallLog from './components/ToolCallLog.vue'
@@ -71,6 +72,7 @@ async function redo() {
     <main class="layout">
       <section class="left">
         <ChatPanel :messages="messages" :busy="busy" @send="send" />
+        <AssetPanel :project="project" />
       </section>
       <section class="right">
         <TimelineView :project="project" />

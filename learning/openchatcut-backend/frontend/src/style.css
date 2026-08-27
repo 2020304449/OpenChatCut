@@ -68,11 +68,14 @@ body {
   overflow: auto;
 }
 
+/* ── 聊天 ── */
+
 .chat {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .messages {
@@ -133,20 +136,37 @@ body {
   cursor: not-allowed;
 }
 
+/* ── 面板通用 ── */
+
 .timeline,
-.tool-log {
+.tool-log,
+.assets {
   background: #1a1d21;
   border: 1px solid #2a2e35;
   border-radius: 10px;
   padding: 16px;
 }
 
-.timeline h2,
+.timeline-head,
+.assets-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.timeline-head h2,
+.assets-head h2,
 .tool-log h2 {
-  margin: 0 0 12px;
+  margin: 0;
   font-size: 14px;
   font-weight: 600;
   color: #9aa3ad;
+}
+
+.meta {
+  font-size: 12px;
+  color: #6b7280;
 }
 
 .empty {
@@ -155,45 +175,234 @@ body {
   padding: 8px 0;
 }
 
-.track {
-  margin-bottom: 16px;
+/* ── 时间线 ── */
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
-.track-label {
+.timeline-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-height: 0;
+}
+
+.timeline-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.row {
+  display: flex;
+  height: 40px;
+}
+
+.gutter {
+  width: 64px;
+  flex: 0 0 64px;
   font-size: 12px;
   color: #9aa3ad;
-  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding-right: 8px;
 }
 
-.track-lane {
+.flag {
+  font-size: 10px;
+  color: #f59e0b;
+}
+
+.lane {
   position: relative;
-  height: 44px;
   background: #14161a;
   border: 1px solid #2a2e35;
   border-radius: 6px;
-  overflow: hidden;
+}
+
+.ruler-row {
+  height: 24px;
+}
+
+.ruler {
+  border: none;
+  background: transparent;
+}
+
+.tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px solid #3a3f46;
+  padding-left: 4px;
+  font-size: 10px;
+  color: #6b7280;
+  line-height: 24px;
+  white-space: nowrap;
 }
 
 .clip {
   position: absolute;
-  top: 6px;
-  bottom: 6px;
+  top: 5px;
+  bottom: 5px;
   border-radius: 4px;
   padding: 0 8px;
   font-size: 12px;
-  line-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.clip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.clip.video { background: #2b5bd7; }
+.clip.image { background: #3a7d5c; }
+.clip.audio { background: #6b4fa1; }
+.clip.text, .clip.solid { background: #b7791f; }
+.clip.gif, .clip.svg { background: #a03d6e; }
+.clip.motion-graphic { background: #0e7490; }
+.clip.sequence { background: #4b5563; }
+
+.transition {
+  flex: 0 0 auto;
+  font-size: 10px;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 0 4px;
+  border-radius: 3px;
+}
+
+.caption-cue {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  border-radius: 4px;
+  background: #7c5c1e;
+  padding: 0 6px;
+  font-size: 11px;
+  line-height: 28px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.clip.video {
-  background: #2b5bd7;
+.caption-row .lane,
+.marker-row .lane {
+  background: #171a1f;
 }
 
-.clip.caption {
-  background: #b7791f;
+.marker-point {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  transform: translateX(-1.5px);
+  border-radius: 2px;
 }
+
+.marker-name {
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  font-size: 10px;
+  color: #e6b46c;
+  white-space: nowrap;
+}
+
+.marker-range {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  border: 2px solid;
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.12);
+  padding: 0 6px;
+  font-size: 11px;
+  line-height: 22px;
+  overflow: hidden;
+  white-space: nowrap;
+  color: #e6b46c;
+}
+
+/* ── 素材池 ── */
+
+.assets {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  max-height: 40%;
+  min-height: 0;
+}
+
+.count {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.asset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+  overflow: auto;
+}
+
+.asset {
+  background: #14161a;
+  border: 1px solid #2a2e35;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.asset-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.kind {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #2a2e35;
+  color: #9aa3ad;
+}
+
+.kind.video { background: #2b5bd7; color: #fff; }
+.kind.audio { background: #6b4fa1; color: #fff; }
+.kind.image { background: #3a7d5c; color: #fff; }
+
+.fav {
+  color: #f59e0b;
+  font-size: 12px;
+}
+
+.asset-name {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 4px;
+}
+
+.asset-meta {
+  font-size: 10px;
+  color: #6b7280;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* ── 工具日志 ── */
 
 .tool-entry {
   border: 1px solid #2a2e35;

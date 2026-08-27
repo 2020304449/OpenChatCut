@@ -7,6 +7,9 @@ export interface Clip {
   kind: string
   src?: string | null
   volume?: number | null
+  sourceAssetId?: string | null
+  fadeInFrames?: number | null
+  fadeOutFrames?: number | null
 }
 
 export interface TransitionItem {
@@ -20,6 +23,7 @@ export interface CaptionCue {
   startFrame: number
   endFrame: number
   text: string
+  speakerId?: string | null
 }
 
 export interface CaptionsData {
@@ -27,22 +31,65 @@ export interface CaptionsData {
   items: CaptionCue[]
 }
 
+export interface Marker {
+  id: string
+  name: string
+  frame?: number | null
+  startFrame?: number | null
+  endFrame?: number | null
+  color?: string | null
+}
+
+export interface MediaAsset {
+  id: string
+  name: string
+  kind: string
+  src?: string | null
+  durationInFrames?: number | null
+  width?: number | null
+  height?: number | null
+  favorite?: boolean
+  folderId?: string | null
+}
+
+export interface MediaFolder {
+  id: string
+  name: string
+}
+
+export interface TrackFlags {
+  kind?: string | null
+  name?: string | null
+  hidden?: boolean
+  muted?: boolean
+  locked?: boolean
+  collapsed?: boolean
+  role?: string | null
+}
+
 export interface Timeline {
   id: string
   name: string
-  fps: number
+  order?: number
   hidden?: boolean
+  fps: number
+  width?: number | null
+  height?: number | null
   items: Clip[]
+  trackOrder?: string[]
+  tracks?: Record<string, TrackFlags>
   transitions: TransitionItem[]
+  markers: Marker[]
+  captionsHidden?: boolean
   captions: CaptionsData | null
-  markers: unknown[]
 }
 
 export interface ProjectDoc {
   version: number
+  assets: MediaAsset[]
+  mediaFolders?: MediaFolder[]
   timelines: Timeline[]
   activeTimelineId: string
-  assets: unknown[]
 }
 
 export interface ToolCallEvent {
@@ -111,7 +158,7 @@ function dispatch(ev: SseEvent, h: StreamHandlers) {
       h.onToolResult(ev.data)
       break
     case 'state':
-      h.onState(ev.data)
+      h.onState(ev.data as ProjectDoc)
       break
     case 'error':
       h.onError(ev.data.message ?? 'unknown error')
