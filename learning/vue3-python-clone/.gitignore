@@ -1,0 +1,13 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node / Vite
+node_modules/
+dist/
+
+# 根 .gitignore 的 `docs/` 规则会误伤本项目的学习文档，这里显式捞回
+!docs/
+!docs/**
