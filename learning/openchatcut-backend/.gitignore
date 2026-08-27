@@ -7,3 +7,6 @@ __pycache__/
 # Node / Vite
 node_modules/
 dist/
+
+# 运行时持久化（backend 默认保存/加载 project.json 到这里）
+data/
