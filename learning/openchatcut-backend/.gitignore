@@ -1,0 +1,9 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node / Vite
+node_modules/
+dist/

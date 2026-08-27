@@ -1,0 +1,227 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #14161a;
+  color: #e6e8eb;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid #2a2e35;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.undo {
+  padding: 6px 16px;
+  border: 1px solid #3a3f46;
+  border-radius: 6px;
+  background: #1f2329;
+  color: #e6e8eb;
+  cursor: pointer;
+}
+
+.undo:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 16px;
+  padding: 16px;
+  min-height: 0;
+}
+
+.left,
+.right {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+}
+
+.right {
+  overflow: auto;
+}
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+}
+
+.messages {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.msg {
+  padding: 10px 12px;
+  border-radius: 8px;
+  max-width: 90%;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.msg.user {
+  align-self: flex-end;
+  background: #2b5bd7;
+}
+
+.msg.assistant {
+  align-self: flex-start;
+  background: #1f2329;
+}
+
+.typing {
+  opacity: 0.5;
+}
+
+.input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.input-row input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #3a3f46;
+  border-radius: 8px;
+  background: #1a1d21;
+  color: #e6e8eb;
+}
+
+.input-row button {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  background: #2b5bd7;
+  color: #fff;
+  cursor: pointer;
+}
+
+.input-row button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.timeline,
+.tool-log {
+  background: #1a1d21;
+  border: 1px solid #2a2e35;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.timeline h2,
+.tool-log h2 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #9aa3ad;
+}
+
+.empty {
+  color: #6b7280;
+  font-size: 13px;
+  padding: 8px 0;
+}
+
+.track {
+  margin-bottom: 16px;
+}
+
+.track-label {
+  font-size: 12px;
+  color: #9aa3ad;
+  margin-bottom: 6px;
+}
+
+.track-lane {
+  position: relative;
+  height: 44px;
+  background: #14161a;
+  border: 1px solid #2a2e35;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.clip {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  border-radius: 4px;
+  padding: 0 8px;
+  font-size: 12px;
+  line-height: 32px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clip.video {
+  background: #2b5bd7;
+}
+
+.clip.caption {
+  background: #b7791f;
+}
+
+.tool-entry {
+  border: 1px solid #2a2e35;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.tool-name {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 6px;
+  color: #7fb0ff;
+}
+
+.tool-args {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: #c6cad0;
+  overflow: auto;
+}
+
+.tool-result {
+  font-size: 12px;
+  color: #6b7280;
+  word-break: break-all;
+}
+
+.tool-result.ok {
+  color: #5fd38a;
+}
