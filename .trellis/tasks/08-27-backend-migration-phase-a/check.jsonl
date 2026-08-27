@@ -1,0 +1,4 @@
+{"file": ".trellis/tasks/08-27-backend-migration-phase-a/research/tools-surface.md", "reason": "工具面权威清单（120 edit/22 ask）、tool==command 映射总表、11 组分组、核心子集建议"}
+{"file": ".trellis/tasks/08-27-backend-migration-phase-a/research/agent-loop.md", "reason": "Agent 循环结构：服务端循环+浏览器权威分离、工具握手、自治验收、上下文管理、关键约束"}
+{"file": ".trellis/tasks/08-27-backend-migration-phase-a/prd.md", "reason": "需求与验收基准，实现时对照"}
+{"file": ".trellis/tasks/08-27-backend-migration-phase-a/design.md", "reason": "技术设计与简化决策，实现时遵循"}

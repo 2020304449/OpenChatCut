@@ -1,0 +1,4 @@
+{"file": ".trellis/tasks/08-27-backend-migration-phase-a2/prd.md", "reason": "A-2 需求与验收基准"}
+{"file": ".trellis/tasks/08-27-backend-migration-phase-a2/design.md", "reason": "A-2 技术设计与简化决策"}
+{"file": ".trellis/tasks/08-27-backend-migration-phase-a/research/tools-surface.md", "reason": "工具面权威清单（120 edit/22 ask）+ tool==command 映射，A-2 补工具时对照"}
+{"file": ".trellis/tasks/08-27-backend-migration-phase-a/research/agent-loop.md", "reason": "Agent 循环结构，A-2 不改循环但保持契约一致"}

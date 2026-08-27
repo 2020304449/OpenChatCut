@@ -1,0 +1,4 @@
+{"file": ".trellis/tasks/08-27-backend-migration-phase-a3/prd.md", "reason": "A-3 需求与验收基准"}
+{"file": ".trellis/tasks/08-27-backend-migration-phase-a3/design.md", "reason": "A-3 技术设计"}
+{"file": ".trellis/tasks/08-27-backend-migration-phase-a/research/agent-loop.md", "reason": "Agent 循环权威结构（B 类工程化对照：重试/验收/压缩）"}
+{"file": ".trellis/tasks/08-27-backend-migration-phase-a/research/tools-surface.md", "reason": "工具面权威清单（A 类 change_cam/manage_link_group 对照）"}
