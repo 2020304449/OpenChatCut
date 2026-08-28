@@ -65,7 +65,10 @@ body {
 }
 
 .right {
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
 }
 
 /* ── 聊天 ── */
@@ -139,7 +142,6 @@ body {
 /* ── 面板通用 ── */
 
 .timeline,
-.tool-log,
 .assets {
   background: #1a1d21;
   border: 1px solid #2a2e35;
@@ -156,8 +158,7 @@ body {
 }
 
 .timeline-head h2,
-.assets-head h2,
-.tool-log h2 {
+.assets-head h2 {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
@@ -180,12 +181,14 @@ body {
 .timeline {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
   min-height: 0;
 }
 
 .timeline-scroll {
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: auto;
+  flex: 1 1 auto;
   min-height: 0;
 }
 
@@ -402,7 +405,82 @@ body {
   flex-wrap: wrap;
 }
 
-/* ── 工具日志 ── */
+/* ── 工具调用（按钮 + 弹窗） ── */
+
+.tool-toggle {
+  padding: 6px 16px;
+  border: 1px solid #3a3f46;
+  border-radius: 6px;
+  background: #1f2329;
+  color: #e6e8eb;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tool-badge {
+  background: #2b5bd7;
+  color: #fff;
+  font-size: 11px;
+  line-height: 1;
+  padding: 3px 7px;
+  border-radius: 10px;
+}
+
+.tool-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.tool-modal-box {
+  background: #1a1d21;
+  border: 1px solid #2a2e35;
+  border-radius: 12px;
+  width: min(720px, 90vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tool-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid #2a2e35;
+}
+
+.tool-modal-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #e6e8eb;
+}
+
+.tool-modal-close {
+  border: none;
+  background: transparent;
+  color: #9aa3ad;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.tool-modal-close:hover {
+  color: #e6e8eb;
+}
+
+.tool-modal-body {
+  overflow: auto;
+  padding: 16px 18px;
+}
 
 .tool-entry {
   border: 1px solid #2a2e35;
@@ -445,6 +523,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  flex: 0 0 auto;
 }
 
 .preview-head {
@@ -479,7 +558,7 @@ body {
   position: relative;
   background: #000;
   border-radius: 8px;
-  height: 280px;
+  height: 200px;
   overflow: hidden;
 }
 

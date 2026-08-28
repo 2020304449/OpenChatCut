@@ -71,6 +71,7 @@ function redo() {
     <header class="topbar">
       <h1>OpenChatCut 后端 · Agent 测试台</h1>
       <div class="actions">
+        <ToolCallLog :calls="toolCalls" />
         <button class="undo" :disabled="busy || !canUndo" @click="undo">撤销</button>
         <button class="undo" :disabled="busy || !canRedo" @click="redo">重做</button>
       </div>
@@ -89,7 +90,6 @@ function redo() {
           @update:playhead="playhead = $event"
         />
         <TimelineView :project="doc" :playhead="playhead" @seek="playhead = $event" />
-        <ToolCallLog :calls="toolCalls" />
       </section>
     </main>
   </div>
