@@ -4,6 +4,8 @@
 
 当前迁移版是单体 FastAPI 后端（持有 ProjectDoc + Executor + LLM loop），前端 Vue3 是 SSE 薄客户端。本子任务把它拆成原版 OpenChatCut 的两端，并 **1:1 复刻 MCP 通信协议语义**（用户已确认：不做简化协议）。
 
+**为何必须 browser 权威（而非 server 权威）**：前端后续要支持**拖拽 + canvas 实时渲染**。拖拽是每秒几十次的连续写操作，reducer 必须在 browser 内存（本地即时反馈），否则每次 tick 都 round-trip 到 server 会卡顿。这决定了 agent 工具与用户拖拽必须共享同一个 browser reducer（单一真源、统一 undo/redo），否则会双写漂移、将来二次迁移。所以「工具留在后端」（= 原版 offline 模式）被否决。
+
 研究基线：`research/arch-server-browser-split.md`、`mcp-broker.md`、`editor-core.md`。
 
 ## 目标架构（对齐原版）
@@ -60,15 +62,18 @@
 - `tool == command` 契约（工具 1:1 映射命令，schema 与 browser 同源）
 - edit-session draft + proposal + apply 三段式（外部客户端从不直接写 ProjectDoc）
 
-## 核心矛盾（design 必须解决）
+## 关键决策（已定）
 
-「browser 权威」要求 command → action → reducer 这条链在**前端 TS 重实现**（原版 `executeTool → EditorCommands → projectReduce` 全在 browser），与现有 Python 后端 78 命令/domain 层重复。
+- **browser 权威**：前端 TS 重实现 `projectReduce` + 快照栈 undo/redo + `makeDraft` 草稿引擎，成为 ProjectDoc 唯一真源。
+- **Python 命令层降级为 offline 模式**（对齐原版 `offline-runtime.ts` 的 server-direct 路径），不删除，供「无 browser 连接」场景 + 测试参考。
+- 为什么：见背景段——拖拽/canvas 实时交互要求 reducer 在 browser 内存，且 agent 工具与用户拖拽必须共享单一真源。
 
-design 需定路线并说明取舍，候选：
+## 实施节奏（骨架先行）
 
-1. 前端 TS 重实现 reducer（权威），Python 命令层降级为 offline 模式的 server-direct 路径（对齐原版 `offline-runtime.ts`）。
-2. 前端 TS 重实现 reducer（权威），Python 命令层保留作 offline/测试，双份维护。
-3. 其他等价方案（须论证仍满足「browser 权威」且不双写漂移）。
+先立住「browser 单一真源 + claim/settle + MCP broker」骨架（含**高频命令**），验证闭环跑通；剩余低频命令是纯机械翻译，用子代理分批补，不阻塞架构生效。
+
+- **骨架命令**（第一批，先翻译）：添加/删除/移动片段、设置片段变换/音量/时长/源入点、撤销/重做、读时间线/读项目、切分片段、添加转场——这些是拖拽与 agent 编辑的核心。
+- **低频命令**（第二批，机械补）：字幕/转写/关键帧/滤镜/多机位/联动组/项目级命令等，对照 Python `commands/` 逐条翻译。
 
 ## 验收标准
 
