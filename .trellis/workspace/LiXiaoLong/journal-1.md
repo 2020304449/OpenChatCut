@@ -56,3 +56,25 @@
 ### Status
 
 [OK] **Completed**
+
+
+## Session 3: 架构对齐：arch-1b 命令补齐 + arch-4 端到端接线
+
+**Date**: 2026-08-28
+**Task**: 架构对齐：arch-1b 命令补齐 + arch-4 端到端接线
+**Branch**: `main`
+
+### Summary
+
+完成 backend-parity-arch 子任务：arch-1b 机械翻译剩余 70 编辑命令（types/reduce/commands 补齐，80 action + 82 命令方法）；arch-4 端到端接线（executeTool 46 工具映射、edit-session 三段式、bridge/serverRun 链路A、bridge/externalBridge 链路B、后端 external-agent 路由 + MCP server 编辑工具经 broker 路由）。trellis-check 修 2 真 bug（非 mutation 动作进历史、只读工具被 session 挡）。后端 100 测试 + 前端 45 测试全绿。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9b20a9d` | (see git log) |
+| `e2b5b61` | (see git log) |
+
+### Status
+
+[OK] **Completed**
