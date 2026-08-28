@@ -12,6 +12,7 @@ export interface EditorStore {
   canUndo: ComputedRef<boolean>
   canRedo: ComputedRef<boolean>
   dispatch: (a: Action) => void
+  reset: (doc: ProjectDoc) => void
 }
 
 export function useEditor(initial: ProjectDoc): EditorStore {
@@ -19,6 +20,11 @@ export function useEditor(initial: ProjectDoc): EditorStore {
 
   function dispatch(a: Action): void {
     h.value = historyReduce(h.value, a)
+  }
+
+  // 加载外部快照：替换 present 并清空 undo/redo 历史
+  function reset(doc: ProjectDoc): void {
+    h.value = initHistory(doc)
   }
 
   const commands = buildCommands(dispatch)
@@ -29,5 +35,6 @@ export function useEditor(initial: ProjectDoc): EditorStore {
     canUndo: computed(() => h.value.past.length > 0),
     canRedo: computed(() => h.value.future.length > 0),
     dispatch,
+    reset,
   }
 }

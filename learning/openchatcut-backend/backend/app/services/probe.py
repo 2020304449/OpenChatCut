@@ -12,9 +12,7 @@ import shutil
 import subprocess
 from typing import Any
 
-
-def _ffprobe_bin() -> str:
-    return os.environ.get("OPENCHATCUT_FFPROBE") or os.environ.get("FFPROBE_PATH") or "ffprobe"
+from .ffmpeg import ffprobe_bin as _ffprobe_bin
 
 
 def _parse_rate(rate: str | None) -> float | None:

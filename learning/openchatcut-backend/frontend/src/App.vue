@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import AssetPanel from './components/AssetPanel.vue'
 import ChatPanel from './components/ChatPanel.vue'
 import PreviewPanel from './components/PreviewPanel.vue'
@@ -9,8 +9,9 @@ import { useEditor } from './editor/store'
 import { demoProject } from './editor/demo'
 import { executeTool } from './agent/tools'
 import { createAndStartRun, type ToolCallEvent } from './bridge/serverRun'
+import { loadProject, saveProject } from './bridge/project'
 
-const { doc, commands, canUndo, canRedo } = useEditor(demoProject())
+const { doc, commands, canUndo, canRedo, reset } = useEditor(demoProject())
 
 const messages = ref<{ role: 'user' | 'assistant'; text: string }[]>([])
 const toolCalls = ref<ToolCallEvent[]>([])
@@ -20,6 +21,29 @@ const playhead = ref(0)
 
 // 内部 run 的 ctx 直接落在真库 store（editor.commands），executeTool 派发 action → 本地 reducer 更新 doc。
 const ctx = { getDoc: () => doc.value, commands }
+
+// 项目持久化：启动加载存档（无存档回退 demo），编辑后防抖自动保存。
+const hydrated = ref(false)
+
+onMounted(async () => {
+  try {
+    const saved = await loadProject()
+    if (saved) reset(saved)
+  } catch (e) {
+    console.warn('加载项目失败', e)
+  } finally {
+    hydrated.value = true
+  }
+})
+
+let saveTimer: ReturnType<typeof setTimeout> | undefined
+watch(doc, () => {
+  if (!hydrated.value) return
+  clearTimeout(saveTimer)
+  saveTimer = setTimeout(() => {
+    saveProject(doc.value).catch((e) => console.warn('保存项目失败', e))
+  }, 500)
+})
 
 async function send(message: string) {
   messages.value.push({ role: 'user', text: message })
@@ -64,6 +88,35 @@ function undo() {
 function redo() {
   commands.redo()
 }
+
+const exporting = ref(false)
+
+async function exportVideo() {
+  exporting.value = true
+  try {
+    const res = await fetch('/api/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ state: doc.value, name: 'demo', format: 'video', codec: 'h264' }),
+    })
+    if (!res.ok) {
+      const body = (await res.json().catch(() => null)) as { error?: string } | null
+      alert('导出失败：' + (body?.error ?? res.status))
+      return
+    }
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'demo.mp4'
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (e) {
+    alert('导出失败：' + (e as Error).message)
+  } finally {
+    exporting.value = false
+  }
+}
 </script>
 
 <template>
@@ -74,6 +127,7 @@ function redo() {
         <ToolCallLog :calls="toolCalls" />
         <button class="undo" :disabled="busy || !canUndo" @click="undo">撤销</button>
         <button class="undo" :disabled="busy || !canRedo" @click="redo">重做</button>
+        <button class="undo" :disabled="exporting" @click="exportVideo">{{ exporting ? '导出中…' : '导出视频' }}</button>
       </div>
     </header>
     <main class="layout">

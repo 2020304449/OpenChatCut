@@ -9,3 +9,9 @@ faster-whisper>=1.0
 
 # MCP Streamable HTTP server（架构对齐）
 mcp>=2.0
+
+# 系统级依赖（非 pip，需在服务器/Docker 里单独安装）：
+#   ffmpeg + ffprobe —— 导出渲染（export.py）+ 媒体探测（probe.py）。
+#   Ubuntu/Debian: apt-get install -y ffmpeg
+#   未安装时 submit_export / probe_media 会返回 ok:false 提示，不崩溃。
+#   路径可用环境变量覆盖：OPENCHATCUT_FFMPEG / OPENCHATCUT_FFPROBE（或 FFMPEG_PATH / FFPROBE_PATH）

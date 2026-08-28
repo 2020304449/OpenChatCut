@@ -10,3 +10,6 @@ dist/
 
 # 运行时持久化（backend 默认保存/加载 project.json 到这里）
 data/
+
+# 本地 ffmpeg 静态二进制（导出渲染依赖，服务器用 apt 装）
+backend/.tools/

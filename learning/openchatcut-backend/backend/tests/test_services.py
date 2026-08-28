@@ -77,3 +77,60 @@ def test_export_run_error_path(monkeypatch):
     r = exp._run(["ffmpeg", "-y"], "/tmp/out.mp4")
     assert r["ok"] is False
     assert "error" in r
+
+
+def test_render_video_builds_filter_graph(monkeypatch, tmp_path):
+    """导出 filter 图应含：归一化 + xfade + overlay + 字幕 + amix。"""
+    import subprocess
+    from app.domain.item import TimelineItem
+    from app.domain.transition import TransitionItem
+    from app.services import export as exp
+
+    tl = Timeline(
+        id="tl1", name="t", fps=30, width=1920, height=1080,
+        items=(
+            TimelineItem(id="i1", track="V1", startFrame=0, durationInFrames=150, name="a", kind="video", src="a.mp4"),
+            TimelineItem(id="i2", track="V1", startFrame=150, durationInFrames=210, name="b", kind="video", src="b.mp4"),
+            TimelineItem(id="i4", track="V2", startFrame=60, durationInFrames=90, name="logo", kind="image", src="logo.png"),
+            TimelineItem(id="i5", track="A1", startFrame=0, durationInFrames=540, name="bgm", kind="audio", src="bgm.mp3"),
+        ),
+        transitions=(TransitionItem(id="tr1", incomingItemId="i2", transType="crossfade", durationInFrames=15),),
+        captions=CaptionsData(items=(CaptionCue(0, 90, "你好"),)),
+    )
+
+    captured = {}
+
+    def fake_run(cmd, **kw):
+        captured["cmd"] = cmd
+        (tmp_path / "out.mp4").write_text("")
+        return subprocess.CompletedProcess(cmd, 0, "", "")
+
+    monkeypatch.setattr(exp.shutil, "which", lambda _b: "/usr/bin/ffmpeg")
+    monkeypatch.setattr(exp.subprocess, "run", fake_run)
+
+    r = exp.render_timeline(tl, str(tmp_path / "out.mp4"))
+    assert r["ok"] is True
+
+    fc = " ".join(captured["cmd"])
+    assert "scale=" in fc and "pad=" in fc   # 分辨率归一化
+    assert "xfade" in fc                       # 转场 crossfade
+    assert "overlay" in fc                     # 叠层
+    assert "subtitles" in fc                   # 字幕烧录
+    assert "amix" in fc                        # 音频混流
+
+
+def test_render_video_no_main_v1_graceful(monkeypatch):
+    """只有叠层/音频、没有 V1 视频时优雅失败。"""
+    from app.domain.item import TimelineItem
+    from app.services import export as exp
+
+    monkeypatch.setattr(exp.shutil, "which", lambda _b: "/usr/bin/ffmpeg")
+
+    tl = Timeline(
+        id="tl1", name="t", fps=30, width=1920, height=1080,
+        items=(TimelineItem(id="i4", track="V2", startFrame=0, durationInFrames=90,
+                            name="logo", kind="image", src="logo.png"),),
+    )
+    r = exp.render_timeline(tl, "out.mp4")
+    assert r["ok"] is False
+    assert "V1" in r["error"]
