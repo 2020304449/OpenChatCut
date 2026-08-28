@@ -646,3 +646,72 @@ body {
   z-index: 2;
   box-shadow: 0 0 4px rgba(244, 63, 94, 0.6);
 }
+
+/* ── 审批弹框 ── */
+
+.approval-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.approval-box {
+  background: #1e1e2e;
+  border: 1px solid #3b3b4f;
+  border-radius: 10px;
+  padding: 20px 24px;
+  min-width: 360px;
+  max-width: 480px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.approval-box h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.approval-box p {
+  margin: 0 0 12px;
+  color: #c0c0d0;
+}
+
+.approval-args {
+  background: #14141f;
+  border-radius: 6px;
+  padding: 10px;
+  max-height: 200px;
+  overflow: auto;
+  font-size: 12px;
+  color: #a0a0b8;
+  margin: 0 0 16px;
+}
+
+.approval-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.approval-actions button {
+  padding: 6px 16px;
+  border-radius: 6px;
+  border: 1px solid #3b3b4f;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.approval-actions .approve {
+  background: #22c55e;
+  border-color: #22c55e;
+  color: #fff;
+}
+
+.approval-actions .reject {
+  background: transparent;
+  color: #f43f5e;
+  border-color: #f43f5e;
+}

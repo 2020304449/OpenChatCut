@@ -7,18 +7,20 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from ..llm import create_llm
+from ..persist import data_dir
 from .executor import execute_run
-from .store import RunStore, claim_tool_request, settle_tool_result
+from .store import RunStore, approve_tool_request, claim_tool_request, settle_tool_result
 
 router = APIRouter(prefix="/api/agent-runs")
 
-store = RunStore()
+store = RunStore(os.path.join(data_dir(), "agent-runs.sqlite3"))
 _event_queues: dict[str, asyncio.Queue] = {}
 _tasks: dict[str, asyncio.Task] = {}
 
@@ -26,6 +28,7 @@ _tasks: dict[str, asyncio.Task] = {}
 class CreateBody(BaseModel):
     message: str
     state: dict
+    supportedTools: list[str] | None = None   # 能力协商：browser 声明的工具集
 
 
 class ClaimBody(BaseModel):
@@ -40,6 +43,11 @@ class ResultBody(BaseModel):
     result: dict
 
 
+class ApprovalBody(BaseModel):
+    toolCallId: str
+    decision: str                # approved | rejected
+
+
 def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
@@ -51,12 +59,13 @@ async def _run_loop(run_id: str, message: str, state: dict, q: asyncio.Queue) ->
     llm = create_llm()
     async for ev in execute_run(run, message, llm, state):
         await q.put(ev)
+    store.persist(run)  # 结束时落盘（recovery：状态不丢、可审计）
     await q.put(None)  # 结束信号
 
 
 @router.post("")
 async def create(body: CreateBody):
-    run = store.create(body.message, body.state)
+    run = store.create(body.message, body.state, body.supportedTools)
     return {"runId": run.id, "state": run.state}
 
 
@@ -101,3 +110,32 @@ async def tool_result(run_id: str, body: ResultBody):
     if run is None:
         raise HTTPException(404, "run not found")
     return settle_tool_result(run, body.toolCallId, body.claimId, body.argsDigest, body.result)
+
+
+@router.post("/{run_id}/approval")
+async def approval(run_id: str, body: ApprovalBody):
+    run = store.get(run_id)
+    if run is None:
+        raise HTTPException(404, "run not found")
+    return approve_tool_request(run, body.toolCallId, body.decision)
+
+
+@router.get("/{run_id}")
+async def get_run(run_id: str):
+    """run 摘要 + metrics。"""
+    run = store.get(run_id)
+    if run is None:
+        raise HTTPException(404, "run not found")
+    m = run.metrics
+    return {
+        "runId": run.id,
+        "state": run.state,
+        "message": run.message,
+        "metrics": {
+            "iterations": m.iterations,
+            "tool_calls": m.tool_calls,
+            "approvals": m.approvals,
+            "errors": m.errors,
+            "duration_ms": m.duration_ms,
+        },
+    }

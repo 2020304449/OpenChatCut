@@ -3,7 +3,7 @@
 
 import { newId } from '../editor/commands'
 import type { ProjectDoc } from '../editor/types'
-import type { ExecuteTool, ToolContext } from '../agent/tools'
+import { SUPPORTED_TOOL_NAMES, type ExecuteTool, type ToolContext } from '../agent/tools'
 
 export interface ToolCallEvent {
   name: string
@@ -16,6 +16,7 @@ export interface ServerRunHandlers {
   onAssistant(text: string): void
   onToolCall(name: string, args: Record<string, unknown>): void
   onToolResult(result: Record<string, unknown>): void
+  onApprovalRequest(name: string, args: Record<string, unknown>): Promise<'approved' | 'rejected'>
   onError(message: string): void
   onDone(): void
 }
@@ -55,6 +56,14 @@ async function settle(runId: string, toolCallId: string, claimId: string, argsDi
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ toolCallId, claimId, argsDigest, result }),
+  })
+}
+
+async function approve(runId: string, toolCallId: string, decision: 'approved' | 'rejected'): Promise<void> {
+  await fetch(`/api/agent-runs/${runId}/approval`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ toolCallId, decision }),
   })
 }
 
@@ -100,6 +109,15 @@ export async function streamServerRun(
         case 'done':
           handlers.onDone()
           return
+        case 'approval_request': {
+          const toolCallId = (ev.data.toolCallId as string) ?? ''
+          const name = (ev.data.name as string) ?? ''
+          const arguments_ = (ev.data.arguments as Record<string, unknown>) ?? {}
+          // 挂起等用户弹框决定 approve/reject，再回传 server
+          const decision = await handlers.onApprovalRequest(name, arguments_)
+          await approve(runId, toolCallId, decision)
+          break
+        }
         case 'tool_request': {
           const toolCallId = (ev.data.toolCallId as string) ?? ''
           const name = (ev.data.name as string) ?? ''
@@ -133,7 +151,7 @@ export async function createAndStartRun(
   const createRes = await fetch('/api/agent-runs', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, state }),
+    body: JSON.stringify({ message, state, supportedTools: SUPPORTED_TOOL_NAMES }),
   })
   const created = (await createRes.json()) as { runId?: string }
   if (!created.runId) {

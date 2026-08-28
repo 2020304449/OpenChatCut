@@ -41,6 +41,13 @@ class SqliteStore:
         self._conn.execute("DELETE FROM kv WHERE k = ?", (k,))
         self._conn.commit()
 
+    def keys(self, prefix: str = "") -> list[str]:
+        """列出匹配前缀的 key（用于恢复扫描）。"""
+        rows = self._conn.execute(
+            "SELECT k FROM kv WHERE k LIKE ? ORDER BY k", (prefix + "%",)
+        ).fetchall()
+        return [r[0] for r in rows]
+
     def has_migration_receipt(self) -> bool:
         row = self._conn.execute(
             "SELECT 1 FROM storage_migration_state WHERE singleton = 1"

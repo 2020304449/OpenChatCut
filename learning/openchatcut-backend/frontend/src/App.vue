@@ -45,6 +45,20 @@ watch(doc, () => {
   }, 500)
 })
 
+// 审批弹框：高风险工具挂起，等用户 approve/reject。
+const pendingApproval = ref<{ name: string; args: Record<string, unknown>; resolve: (d: 'approved' | 'rejected') => void } | null>(null)
+
+function requestApproval(name: string, args: Record<string, unknown>): Promise<'approved' | 'rejected'> {
+  return new Promise((resolve) => {
+    pendingApproval.value = { name, args, resolve }
+  })
+}
+
+function decideApproval(decision: 'approved' | 'rejected') {
+  pendingApproval.value?.resolve(decision)
+  pendingApproval.value = null
+}
+
 async function send(message: string) {
   messages.value.push({ role: 'user', text: message })
   toolCalls.value = []
@@ -63,6 +77,9 @@ async function send(message: string) {
       onToolResult(result) {
         const last = toolCalls.value[toolCalls.value.length - 1]
         if (last) last.result = result
+      },
+      onApprovalRequest(name, args) {
+        return requestApproval(name, args)
       },
       onState() {
         // browser 权威：doc 已由 executeTool 经本地 reducer 更新，server 的 state 事件无需回填。
@@ -146,5 +163,16 @@ async function exportVideo() {
         <TimelineView :project="doc" :playhead="playhead" @seek="playhead = $event" />
       </section>
     </main>
+    <div v-if="pendingApproval" class="approval-overlay">
+      <div class="approval-box">
+        <h3>审批请求</h3>
+        <p>是否允许执行工具「{{ pendingApproval.name }}」？</p>
+        <pre class="approval-args">{{ JSON.stringify(pendingApproval.args, null, 2) }}</pre>
+        <div class="approval-actions">
+          <button class="approve" @click="decideApproval('approved')">批准</button>
+          <button class="reject" @click="decideApproval('rejected')">拒绝</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
