@@ -5,9 +5,17 @@ import { newId } from '../editor/commands'
 import type { ProjectDoc } from '../editor/types'
 import type { ExecuteTool, ToolContext } from '../agent/tools'
 
+export interface ToolCallEvent {
+  name: string
+  args: Record<string, unknown>
+  result?: Record<string, unknown>
+}
+
 export interface ServerRunHandlers {
   onState(doc: ProjectDoc): void
   onAssistant(text: string): void
+  onToolCall(name: string, args: Record<string, unknown>): void
+  onToolResult(result: Record<string, unknown>): void
   onError(message: string): void
   onDone(): void
 }
@@ -100,10 +108,12 @@ export async function streamServerRun(
           const claimId = newId()
 
           // claim → 执行 → settle（server 侧在 wait_for_tool_result 挂起，这里串行即可）
+          handlers.onToolCall(name, arguments_)
           const claimed = await claim(runId, toolCallId, claimId)
           const result = claimed
             ? executeTool(name, arguments_, ctx)
             : { ok: false, error: 'claim failed' }
+          handlers.onToolResult(result)
           await settle(runId, toolCallId, claimId, argsDigest, result)
           break
         }

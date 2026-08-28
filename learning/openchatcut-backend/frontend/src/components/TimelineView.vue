@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { activeTimeline, type ProjectDoc, type Clip, type TransitionItem } from '../api'
+import { activeTimeline, type ProjectDoc, type TimelineItem, type TransitionItem } from '../editor/types'
 
 const props = defineProps<{ project: ProjectDoc }>()
 
@@ -25,7 +25,7 @@ interface TrackRow {
   name?: string | null
   muted?: boolean
   locked?: boolean
-  clips: Clip[]
+  clips: TimelineItem[]
 }
 
 const tracks = computed<TrackRow[]>(() => {

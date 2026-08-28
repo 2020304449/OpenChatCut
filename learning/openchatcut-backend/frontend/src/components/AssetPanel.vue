@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { ProjectDoc, MediaAsset } from '../api'
+import type { ProjectDoc, MediaAsset } from '../editor/types'
 
 const props = defineProps<{ project: ProjectDoc }>()
 

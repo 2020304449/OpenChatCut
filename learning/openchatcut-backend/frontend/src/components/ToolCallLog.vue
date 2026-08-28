@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ToolCallEvent } from '../api'
+import type { ToolCallEvent } from '../bridge/serverRun'
 
 defineProps<{ calls: ToolCallEvent[] }>()
 </script>
