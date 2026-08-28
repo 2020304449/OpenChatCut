@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 1
-- **Last Active**: 2026-08-27
+- **Total Sessions**: 2
+- **Last Active**: 2026-08-28
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~32 | Active |
+| `journal-1.md` | ~58 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 2 | 2026-08-28 | 后端对齐原版：C+D 能力补齐 | `e078551`, `3164587`, `a7df16f`, `ecd93c7`, `17429af`, `43e525e` | `main` |
 | 1 | 2026-08-27 | 后端迁移 A 类定版 + 真实 DeepSeek 验证 + 前端可视化深化 | `df6fd52`, `1b97d8f`, `98a85b1`, `93c6065`, `6f1bb41` | `main` |
 <!-- @@@/auto:session-history -->
 
