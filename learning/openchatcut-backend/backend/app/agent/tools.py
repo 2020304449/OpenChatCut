@@ -30,18 +30,8 @@ def _new_id() -> str:
     return uuid.uuid4().hex[:8]
 
 
-# [DEFERRED] 生成/导出类工具（依赖外部服务/渲染引擎，后续阶段补充）。
-# 统一标记，grep "DEFERRED" 可找到全部延后项，详见 prd.md Out of Scope。
-DEFERRED_TOOLS = (
-    # 生成类（外部付费服务：DALL-E/TTS/音乐/视频生成）
-    "submit_image", "submit_voice", "submit_sound", "submit_music", "submit_video",
-    "submit_motion_graphic", "create_motion_graphic_from_code", "submit_shader",
-    "track_progress", "rerun_generation",
-    # 导出类（渲染引擎 Remotion/FFmpeg，阶段 C/D）
-    "submit_export", "submit_render_job", "track_export", "verify_export",
-    "export_motion_graphic_prores", "register_converted_video",
-    "convert_motion_graphic_to_video", "export_jianying_draft",
-)
+# 生成/导出类工具已实现（见 generation_tools.py：mock 存根 + 真实服务桥接），
+# 不再标记 DEFERRED。契约对照 .trellis/tasks/08-28-backend-parity-cd/research/deferred-tools.md。
 
 
 def _missing_item(executor: Executor, item_id: str) -> dict | None:
@@ -924,3 +914,9 @@ TOOLS: list[Tool] = [
     Tool("change_cam", "多机位管理（set_groups/add_decision）", ChangeCamArgs, exec_change_cam),
     Tool("manage_link_group", "联动组管理（add/set，A/V 同动锁）", ManageLinkGroupArgs, exec_manage_link_group),
 ]
+
+# 生成/导出类工具（mock 存根 + 真实服务桥接）。放在末尾 import 以避免循环依赖
+# （generation_tools 从本模块 import Tool/ToolContext/_missing_item）。
+from .generation_tools import GENERATION_TOOLS  # noqa: E402
+
+TOOLS.extend(GENERATION_TOOLS)
