@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from .agent.loop import run_agent
 from .agent.registry import build_registry
+from .agent_runs.routes import router as agent_runs_router
 from .commands.base import Executor
 from .domain.timeline import default_project, project_to_dict
 from .llm import create_llm
@@ -38,6 +39,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 内部 server run 的 claim/settle 协议（arch-3）
+app.include_router(agent_runs_router)
 
 
 class ChatBody(BaseModel):
