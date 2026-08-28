@@ -9,6 +9,8 @@ export interface DraftEngine {
   commands: EditorCommands
   getDoc(): ProjectDoc
   takeActions(): EditAction[]
+  /** 非破坏性：当前已记录 action 数（不清空） */
+  countActions(): number
 }
 
 export function makeDraft(base: ProjectDoc): DraftEngine {
@@ -32,6 +34,7 @@ export function makeDraft(base: ProjectDoc): DraftEngine {
       pending = []
       return out
     },
+    countActions: () => pending.length,
   }
 }
 
