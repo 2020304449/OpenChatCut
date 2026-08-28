@@ -1,16 +1,16 @@
 // executeTool（工具==命令）+ edit-session 三段式 的集成测试。
 import { describe, expect, it } from 'vitest'
 import { beginEditSession } from './session'
-import { executeTool, type ToolContext } from './tools'
+import { executeTool, SUPPORTED_TOOL_NAMES, type ToolContext } from './tools'
 import { buildCommands } from '../editor/commands'
-import { projectReduce } from '../editor/reduce'
+import { historyReduce, initHistory, type History } from '../editor/reduce'
 import { activeTimeline, defaultProject, type ProjectDoc } from '../editor/types'
 
-// 用「真库」构建 ToolContext：commands 派发 → projectReduce 更新 doc
+// 用「真库」构建 ToolContext：commands 派发 → historyReduce 更新 doc（对齐 useEditor）
 function storeCtx(initial: ProjectDoc = defaultProject()): { ctx: ToolContext; getDoc: () => ProjectDoc } {
-  let doc = initial
-  const commands = buildCommands((a) => { doc = projectReduce(doc, a as never) })
-  return { ctx: { getDoc: () => doc, commands }, getDoc: () => doc }
+  let h: History = initHistory(initial)
+  const commands = buildCommands((a) => { h = historyReduce(h, a) })
+  return { ctx: { getDoc: () => h.present, commands }, getDoc: () => h.present }
 }
 
 describe('executeTool 工具==命令', () => {
@@ -65,6 +65,17 @@ describe('executeTool 工具==命令', () => {
     const r = executeTool('transcribe_track', {}, ctx)
     expect(r.ok).toBe(false)
     expect((r as { error: string }).error).toContain('not implemented')
+  })
+
+  it('SUPPORTED_TOOL_NAMES 每个名字 executeTool 都实现（不返回 not implemented）', () => {
+    const { ctx } = storeCtx()
+    for (const name of SUPPORTED_TOOL_NAMES) {
+      const r = executeTool(name, {}, ctx) as { ok?: boolean; error?: string }
+      // 允许返回 item not found / unknown action 等业务错误，只要不是 not implemented
+      if (r.error !== undefined) {
+        expect(r.error).not.toContain('not implemented')
+      }
+    }
   })
 })
 

@@ -545,3 +545,72 @@ export function executeTool(name: string, args: Record<string, unknown>, ctx: To
       return { ok: false, error: `tool not implemented: ${name}` }
   }
 }
+
+// executeTool 实现覆盖的工具名清单（3 只读 + 44 编辑）。
+// 20 个生成/导出类工具（submit_*/transcribe_track/probe_media/...）走 server 端，不在其中。
+// 工具清单一致性校验的「前端单源」：新增编辑工具需同时改后端 TOOLS + 本清单 + executeTool case，
+// 漏同步会被 tools.test.ts 的一致性测试抓住。
+export const SUPPORTED_TOOL_NAMES: readonly string[] = [
+  // 只读
+  'read_timeline',
+  'read_project',
+  'read_transcript',
+  // 轨道
+  'edit_track',
+  // 片段基础
+  'add_clip',
+  'remove_clip',
+  'clear_timeline',
+  'duplicate_clip',
+  'split_clip',
+  'move_clip',
+  'set_clip_timing',
+  'update_clip_props',
+  // 片段属性
+  'set_clip_volume',
+  'set_clip_fade',
+  'set_clip_transform',
+  'set_clip_filters',
+  'set_clip_speed',
+  'set_clip_zoom',
+  'set_clip_effects',
+  // 转场
+  'add_transition',
+  'edit_transition',
+  // 字幕
+  'edit_captions',
+  // 关键帧
+  'set_keyframe',
+  'remove_keyframe',
+  'clear_keyframes',
+  // 标记
+  'manage_markers',
+  // 选择
+  'select_clips',
+  // 素材池
+  'manage_media_pool',
+  // 撤销/重做
+  'undo_last_change',
+  'redo_last_change',
+  // 转写
+  'set_item_transcript',
+  'clean_script',
+  'delete_text',
+  'manage_transcript',
+  // 片段属性补充
+  'slip_item',
+  'set_background_fill',
+  'replace_media',
+  'update_watermark',
+  'set_item_denoise',
+  'set_reframe_keyframe',
+  // 项目级
+  'manage_timelines',
+  'edit_media_pool',
+  'set_design_style',
+  'set_full_state',
+  // 多机位
+  'set_aspect_ratio',
+  'change_cam',
+  'manage_link_group',
+]
