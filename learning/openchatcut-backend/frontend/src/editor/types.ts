@@ -19,6 +19,19 @@ export interface ClipFilters {
   blur?: number | null
 }
 
+export interface ZoomEffect {
+  magnification?: number | null
+  focalPointX?: number | null
+  focalPointY?: number | null
+  shape?: string | null
+}
+
+export interface ClipEffect {
+  id: string
+  assetId: string
+  overrides?: Record<string, unknown> | null
+}
+
 export interface Keyframe {
   frame: number
   value: number
@@ -38,6 +51,19 @@ export interface TranscriptWord {
   endMs: number
   speaker?: string | null
   id?: string | null
+}
+
+export interface TranscriptVariantWord {
+  i: number
+  text: string
+}
+
+export interface TranscriptVariant {
+  id: string
+  lang: string
+  kind: string
+  label: string
+  words?: TranscriptVariantWord[]
 }
 
 export type ItemKind =
@@ -68,10 +94,25 @@ export interface TimelineItem {
   transform?: ClipTransform | null
   keyframes?: Record<string, Keyframe[]> | null
   filters?: ClipFilters | null
+  zoom?: ZoomEffect | null
+  effects?: ClipEffect[]
   playbackRate?: number | null
   transcript?: TranscriptWord[] | null
+  transcriptGenerationId?: string | null
+  transcriptStale?: boolean
+  variants?: TranscriptVariant[]
+  deletedWordIdx?: number[]
+  silenceFrames?: number | null
+  cutPadFrames?: number | null
+  gapCapsMs?: Record<string, number> | null
+  transcriptPlayOrder?: number[] | null
   backgroundFill?: boolean
+  backgroundFillStrength?: number | null
+  denoisedSrc?: string | null
+  denoiseStrength?: number | null
   reframeKeyframes?: ReframeKeyframe[]
+  multicamGroupId?: string | null
+  multicamAngleId?: string | null
 }
 
 export interface TransitionItem {
@@ -112,6 +153,9 @@ export interface MediaAsset {
   height?: number | null
   favorite?: boolean
   folderId?: string | null
+  transcript?: TranscriptWord[]
+  transcriptSourceRevision?: string | null
+  transcriptStale?: boolean
 }
 
 export interface MediaFolder {
@@ -129,6 +173,44 @@ export interface TrackFlags {
   role?: string | null
 }
 
+export interface Watermark {
+  enabled?: boolean
+  text?: string
+  position?: string
+  opacity?: number
+}
+
+export interface TimelineLinkGroup {
+  id: string
+  itemIds: string[]
+  anchorItemId: string
+  mode: string
+}
+
+export interface MulticamAngle {
+  id: string
+  itemId: string
+  label: string
+  offsetFrames?: number
+  confidence?: number
+}
+
+export interface MulticamAngleDecision {
+  id: string
+  fromFrame: number
+  toFrame: number
+  angleId: string
+}
+
+export interface MulticamGroup {
+  id: string
+  referenceAngleId: string
+  masterAngleId: string
+  angles?: MulticamAngle[]
+  syncMethod?: string
+  decisions?: MulticamAngleDecision[]
+}
+
 export interface Timeline {
   id: string
   name: string
@@ -137,6 +219,7 @@ export interface Timeline {
   fps: number
   width?: number | null
   height?: number | null
+  fit?: string | null
   items: TimelineItem[]
   trackOrder?: string[]
   tracks?: Record<string, TrackFlags>
@@ -144,6 +227,11 @@ export interface Timeline {
   markers: Marker[]
   captionsHidden?: boolean
   captions: CaptionsData | null
+  selectedId?: string | null
+  selectedIds?: string[]
+  watermark?: Watermark | null
+  linkGroups?: TimelineLinkGroup[]
+  multicamGroups?: MulticamGroup[]
 }
 
 export interface ProjectDoc {
@@ -152,6 +240,7 @@ export interface ProjectDoc {
   mediaFolders?: MediaFolder[]
   timelines: Timeline[]
   activeTimelineId: string
+  designStyle?: Record<string, unknown> | null
 }
 
 export function activeTimeline(doc: ProjectDoc): Timeline {
