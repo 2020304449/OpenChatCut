@@ -1,4 +1,4 @@
-"""生成演示数据：多素材 / 多轨 / 字幕 / 转场 / 标记，写入默认 data/project.json。
+"""生成演示数据：多素材 / 多轨 / 字幕 / 转场 / 标记，写入默认 data/project-store.sqlite3。
 
 用法（在 backend/ 目录下运行）：
     python seed_demo.py
@@ -55,4 +55,4 @@ def build() -> ProjectDoc:
 
 if __name__ == "__main__":
     save_project(build())
-    print("已写入 data/project.json")
+    print("已写入 data/project-store.sqlite3")

@@ -1,4 +1,8 @@
-"""run 持久化：ProjectDoc 的 JSON 文件快照（B5，零新依赖）。"""
+"""持久化：ProjectDoc 的 SQLite KV 文档库（对齐原版 sqlite-store）。
+
+迁移：首启若无 SQLite 且存在旧 JSON 快照（data/project.json），导入并写 receipt；
+之后走 SQLite。receipt 缺失时回退 JSON 读取，保持向后兼容。
+"""
 from __future__ import annotations
 
 import dataclasses
@@ -9,6 +13,9 @@ from dataclasses import is_dataclass
 from typing import Any, Union, get_args, get_origin, get_type_hints
 
 from .domain.timeline import ProjectDoc, project_to_dict
+from .storage.sqlite_store import SqliteStore
+
+PROJECT_KEY = "project:default"
 
 
 def _coerce(tp, value):
@@ -53,22 +60,69 @@ def project_from_dict(data: dict) -> ProjectDoc:
     return _construct(ProjectDoc, data)
 
 
+def data_dir() -> str:
+    return os.environ.get("OPENCHATCUT_DATA_DIR", "data")
+
+
 def default_path() -> str:
-    base = os.environ.get("OPENCHATCUT_DATA_DIR", "data")
-    return os.path.join(base, "project.json")
+    """SQLite DB 文件路径（默认存储位置）。"""
+    return os.path.join(data_dir(), "project-store.sqlite3")
+
+
+def legacy_json_path() -> str:
+    """旧版 JSON 快照路径（迁移源）。"""
+    return os.path.join(data_dir(), "project.json")
+
+
+def _load_json(path: str) -> ProjectDoc | None:
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return project_from_dict(data)
+    except (json.JSONDecodeError, FileNotFoundError, OSError):
+        return None
+
+
+def _mark_migrated(db_path: str, legacy: str) -> None:
+    store = SqliteStore(db_path)
+    try:
+        store.set_migration_receipt({"source": legacy, "phase": 1})
+    finally:
+        store.close()
 
 
 def save_project(doc: ProjectDoc, path: str | None = None) -> None:
-    p = path or default_path()
-    os.makedirs(os.path.dirname(p), exist_ok=True)
-    with open(p, "w", encoding="utf-8") as f:
-        json.dump(project_to_dict(doc), f, ensure_ascii=False, indent=2)
+    """写 ProjectDoc 到 SQLite（path 为 DB 文件路径，默认 data/project-store.sqlite3）。"""
+    db_path = path or default_path()
+    parent = os.path.dirname(db_path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    store = SqliteStore(db_path)
+    try:
+        store.put(PROJECT_KEY, json.dumps(project_to_dict(doc), ensure_ascii=False))
+    finally:
+        store.close()
 
 
 def load_project(path: str | None = None) -> ProjectDoc | None:
-    p = path or default_path()
-    if not os.path.exists(p):
+    """从 SQLite 读 ProjectDoc；默认路径下 DB 缺失时从旧 JSON 迁移。"""
+    db_path = path or default_path()
+    if not os.path.exists(db_path):
+        # 迁移只在默认路径场景触发（显式 path 只读该 DB，不存在即 None）
+        if path is None:
+            legacy = legacy_json_path()
+            if os.path.exists(legacy):
+                doc = _load_json(legacy)
+                if doc is not None:
+                    save_project(doc, db_path)
+                    _mark_migrated(db_path, legacy)
+                    return doc
         return None
-    with open(p, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    return project_from_dict(data)
+    store = SqliteStore(db_path)
+    try:
+        raw = store.get(PROJECT_KEY)
+    finally:
+        store.close()
+    if raw is None:
+        return None
+    return project_from_dict(json.loads(raw))

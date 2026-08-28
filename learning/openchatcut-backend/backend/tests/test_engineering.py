@@ -52,7 +52,7 @@ def test_persist_roundtrip(tmp_path):
                                       durationInFrames=90, name="A", kind="video", volume=0.5)))
     ex.execute(A.SetCaptions(CaptionsData(items=(CaptionCue(0, 90, "你好"),))))
 
-    p = str(tmp_path / "project.json")
+    p = str(tmp_path / "project-store.sqlite3")
     save_project(ex.state, p)
     loaded = load_project(p)
     assert loaded is not None
