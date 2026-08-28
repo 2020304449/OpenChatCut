@@ -66,10 +66,14 @@ class MockLlm:
         if "字幕" in user or "caption" in user.lower():
             extras.append(ToolCall("t4", "edit_captions",
                                    {"action": "set", "enabled": True, "texts": ["这是自动生成的字幕"]}))
+        if "生成" in user or "图片" in user or "image" in user.lower():
+            extras.append(ToolCall("t5", "submit_image",
+                                   {"prompt": "一张科技感封面图", "name": "封面", "count": 1}))
         self._steps = steps + extras
         self._final_text = "已完成：添加了两个片段" + \
             ("，并加了转场" if "转场" in user else "") + \
-            ("，以及字幕" if "字幕" in user else "") + "。"
+            ("，以及字幕" if "字幕" in user else "") + \
+            ("，以及一张生成图片" if "生成" in user or "图片" in user else "") + "。"
 
 
 def _is_transient(error: Exception) -> bool:
