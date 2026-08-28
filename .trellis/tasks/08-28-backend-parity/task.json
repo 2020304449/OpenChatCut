@@ -1,0 +1,29 @@
+{
+  "id": "backend-parity",
+  "name": "backend-parity",
+  "title": "后端对齐原版：能力补齐 + 架构对齐",
+  "description": "将学习用最小闭环升级为对齐原版 OpenChatCut 后端：①补齐 C/D 能力（18 个 DEFERRED 工具、转写 ASR、导出 FFmpeg、媒体探测 ffprobe、SQLite 持久化）；②对齐架构（server 决策 / browser 权威分离 + MCP 通信层 + 前端持有 EditorCore 真源）。MCP 通信层纳入范围。",
+  "status": "in_progress",
+  "dev_type": null,
+  "scope": null,
+  "package": null,
+  "priority": "P1",
+  "creator": "LiXiaoLong",
+  "assignee": "LiXiaoLong",
+  "createdAt": "2026-08-28",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [
+    "08-28-backend-parity-cd",
+    "08-28-backend-parity-arch"
+  ],
+  "parent": null,
+  "relatedFiles": [],
+  "notes": "",
+  "meta": {}
+}
