@@ -2,7 +2,8 @@
 import { computed } from 'vue'
 import { activeTimeline, type ProjectDoc, type TimelineItem, type TransitionItem } from '../editor/types'
 
-const props = defineProps<{ project: ProjectDoc }>()
+const props = defineProps<{ project: ProjectDoc; playhead?: number }>()
+const emit = defineEmits<{ (e: 'seek', frame: number): void }>()
 
 const PX_PER_SEC = 40
 const GUTTER = 64
@@ -85,6 +86,26 @@ function wPx(frames: number): number {
 function sec(frames: number): string {
   return (frames / fps.value).toFixed(2) + 's'
 }
+
+// 音频波形：根据 clip id 确定性生成高度（无需真实解码，仅视觉）
+function waveBars(clip: TimelineItem, n = 24): number[] {
+  let h = 0
+  for (const ch of clip.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+  const bars: number[] = []
+  for (let i = 0; i < n; i++) {
+    h = (h * 1103515245 + 12345) >>> 0
+    bars.push(0.15 + (h % 100) / 100 * 0.85)
+  }
+  return bars
+}
+
+function seekFromEvent(e: MouseEvent): void {
+  const el = e.currentTarget as HTMLElement
+  const rect = el.getBoundingClientRect()
+  const px = e.clientX - rect.left - GUTTER
+  const frame = Math.max(0, Math.round((px / PX_PER_SEC) * fps.value))
+  emit('seek', frame)
+}
 </script>
 
 <template>
@@ -108,7 +129,7 @@ function sec(frames: number): string {
         <!-- 刻度尺 -->
         <div class="row ruler-row">
           <div class="gutter"></div>
-          <div class="lane ruler" :style="{ width: contentWidth + 'px' }">
+          <div class="lane ruler" :style="{ width: contentWidth + 'px' }" @click="seekFromEvent">
             <div v-for="t in rulerTicks" :key="t.frame" class="tick" :style="{ left: xPx(t.frame) + 'px' }">
               <span>{{ t.label }}</span>
             </div>
@@ -122,7 +143,7 @@ function sec(frames: number): string {
             <span v-if="track.muted" class="flag">M</span>
             <span v-if="track.locked" class="flag">L</span>
           </div>
-          <div class="lane" :style="{ width: contentWidth + 'px' }">
+          <div class="lane" :style="{ width: contentWidth + 'px' }" @click="seekFromEvent">
             <div
               v-for="clip in track.clips"
               :key="clip.id"
@@ -131,6 +152,18 @@ function sec(frames: number): string {
               :style="{ left: xPx(clip.startFrame) + 'px', width: wPx(clip.durationInFrames) + 'px' }"
               :title="`${clip.name} (${sec(clip.startFrame)} ~ ${sec(clip.startFrame + clip.durationInFrames)})`"
             >
+              <video
+                v-if="clip.kind === 'video' && clip.src"
+                class="clip-thumb"
+                :src="clip.src"
+                muted
+                preload="metadata"
+                playsinline
+              ></video>
+              <img v-else-if="clip.kind === 'image' && clip.src" class="clip-thumb" :src="clip.src" alt="" />
+              <span v-else-if="clip.kind === 'audio'" class="waveform">
+                <i v-for="(h, i) in waveBars(clip)" :key="i" :style="{ height: h * 100 + '%' }"></i>
+              </span>
               <span class="clip-name">{{ clip.name }}</span>
               <span v-if="transitionByClip[clip.id]" class="transition">
                 ⟡ {{ transitionByClip[clip.id].transType }}
@@ -142,7 +175,7 @@ function sec(frames: number): string {
         <!-- 字幕轨 -->
         <div v-if="timeline.captions && timeline.captions.items.length" class="row caption-row">
           <div class="gutter">字幕</div>
-          <div class="lane" :style="{ width: contentWidth + 'px' }">
+          <div class="lane" :style="{ width: contentWidth + 'px' }" @click="seekFromEvent">
             <div
               v-for="(c, i) in timeline.captions.items"
               :key="i"
@@ -158,7 +191,7 @@ function sec(frames: number): string {
         <!-- 标记轨 -->
         <div v-if="timeline.markers.length" class="row marker-row">
           <div class="gutter">标记</div>
-          <div class="lane" :style="{ width: contentWidth + 'px' }">
+          <div class="lane" :style="{ width: contentWidth + 'px' }" @click="seekFromEvent">
             <template v-for="m in timeline.markers" :key="m.id">
               <div
                 v-if="m.frame != null"
@@ -183,6 +216,9 @@ function sec(frames: number): string {
             </template>
           </div>
         </div>
+
+        <!-- 播放头 -->
+        <div class="playhead" :style="{ left: GUTTER + xPx(playhead ?? 0) + 'px' }"></div>
       </div>
     </div>
   </div>

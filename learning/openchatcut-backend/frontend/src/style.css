@@ -434,3 +434,136 @@ body {
 .tool-result.ok {
   color: #5fd38a;
 }
+
+/* ── 预览播放器 ── */
+
+.preview {
+  background: #1a1d21;
+  border: 1px solid #2a2e35;
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.preview-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.preview-head h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #9aa3ad;
+}
+
+.preview-time {
+  font-size: 12px;
+  color: #6b7280;
+  font-variant-numeric: tabular-nums;
+}
+
+.play {
+  padding: 6px 18px;
+  border: none;
+  border-radius: 8px;
+  background: #2b5bd7;
+  color: #fff;
+  cursor: pointer;
+}
+
+.preview-stage {
+  position: relative;
+  background: #000;
+  border-radius: 8px;
+  height: 280px;
+  overflow: hidden;
+}
+
+.preview-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.preview-scrub {
+  width: 100%;
+  accent-color: #2b5bd7;
+}
+
+.preview-meta {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+/* ── 片段媒体缩略图 ── */
+
+.clip {
+  padding: 0;
+}
+
+.clip-thumb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.clip-name {
+  position: absolute;
+  left: 6px;
+  bottom: 3px;
+  z-index: 1;
+  max-width: calc(100% - 12px);
+  font-size: 11px;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.45);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.waveform {
+  position: absolute;
+  inset: 4px 6px;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.waveform i {
+  flex: 1;
+  min-width: 1px;
+  background: #b49ae0;
+  border-radius: 1px;
+}
+
+.transition {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  z-index: 1;
+}
+
+/* ── 播放头 ── */
+
+.timeline-inner {
+  position: relative;
+}
+
+.playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #f43f5e;
+  transform: translateX(-1px);
+  pointer-events: none;
+  z-index: 2;
+  box-shadow: 0 0 4px rgba(244, 63, 94, 0.6);
+}

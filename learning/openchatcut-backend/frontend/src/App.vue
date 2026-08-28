@@ -2,18 +2,21 @@
 import { ref } from 'vue'
 import AssetPanel from './components/AssetPanel.vue'
 import ChatPanel from './components/ChatPanel.vue'
+import PreviewPanel from './components/PreviewPanel.vue'
 import TimelineView from './components/TimelineView.vue'
 import ToolCallLog from './components/ToolCallLog.vue'
 import { useEditor } from './editor/store'
-import { defaultProject } from './editor/types'
+import { demoProject } from './editor/demo'
 import { executeTool } from './agent/tools'
 import { createAndStartRun, type ToolCallEvent } from './bridge/serverRun'
 
-const { doc, commands, canUndo, canRedo } = useEditor(defaultProject())
+const { doc, commands, canUndo, canRedo } = useEditor(demoProject())
 
 const messages = ref<{ role: 'user' | 'assistant'; text: string }[]>([])
 const toolCalls = ref<ToolCallEvent[]>([])
 const busy = ref(false)
+const playing = ref(false)
+const playhead = ref(0)
 
 // 内部 run 的 ctx 直接落在真库 store（editor.commands），executeTool 派发 action → 本地 reducer 更新 doc。
 const ctx = { getDoc: () => doc.value, commands }
@@ -78,7 +81,14 @@ function redo() {
         <AssetPanel :project="doc" />
       </section>
       <section class="right">
-        <TimelineView :project="doc" />
+        <PreviewPanel
+          :project="doc"
+          :playing="playing"
+          :playhead="playhead"
+          @update:playing="playing = $event"
+          @update:playhead="playhead = $event"
+        />
+        <TimelineView :project="doc" :playhead="playhead" @seek="playhead = $event" />
         <ToolCallLog :calls="toolCalls" />
       </section>
     </main>
