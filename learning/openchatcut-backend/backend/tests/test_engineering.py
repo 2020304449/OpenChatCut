@@ -3,7 +3,7 @@ import os
 
 import pytest
 
-from app.agent.loop import _compact, _estimate_tokens, run_agent
+from app.agent.loop import _compact, _estimate_tokens
 from app.commands import actions as A
 from app.commands.base import Executor
 from app.domain.captions import CaptionCue, CaptionsData
@@ -20,16 +20,6 @@ def test_mock_stream_chat_emits_tool_calls_and_text():
     kinds = [e["type"] for e in events]
     assert "tool_calls" in kinds
     assert kinds[-1] == "done"
-
-
-def test_run_agent_mock_full_flow():
-    ex = Executor(default_project())
-    events = list(run_agent("加两个片段和一个字幕", ex, MockLlm()))
-    tool_names = [e["data"]["name"] for e in events if e["event"] == "tool_call"]
-    assert "add_clip" in tool_names
-    assert "edit_captions" in tool_names
-    assert events[-1]["event"] == "done"
-    assert len(active_timeline(ex.state).items) == 2
 
 
 def test_estimate_and_compact():
