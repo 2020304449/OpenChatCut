@@ -13,15 +13,18 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 
 from mcp.server.mcpserver import MCPServer
 
 from ..agent.tools import GENERATION_TOOLS, TOOLS
+from ..persist import data_dir
 from .broker import CALL_DEADLINE_SECONDS, Broker, EditorBinding
 from .registry import Registry
 
 broker = Broker()
-registry = Registry()
+registry = Registry(os.path.join(data_dir(), "external-agent.sqlite3"))
+registry.load()   # 启动时恢复已注册的 browser 连接
 
 CONTROL_TOOL_NAMES = {
     "openchatcut_status", "list_projects", "create_project",
@@ -62,7 +65,16 @@ def create_mcp_server() -> MCPServer:
         return json.dumps({
             "bindingMode": "browser",
             "availableToolTier": "browser",
-            "connectedClients": 1,
+            "connectedClients": len(registry.list()),
+        }, ensure_ascii=False)
+
+    @server.tool(name="mcp_check", description="检查 MCP 连接健康状态")
+    async def mcp_check() -> str:
+        return json.dumps({
+            "ok": True,
+            "browserOnline": registry.get(DEFAULT_PROJECT) is not None,
+            "pendingCalls": broker.pending_count(),
+            "registeredProjects": [r.projectId for r in registry.list()],
         }, ensure_ascii=False)
 
     @server.tool(name="list_projects", description="列出项目")

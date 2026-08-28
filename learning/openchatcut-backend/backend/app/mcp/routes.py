@@ -35,6 +35,10 @@ class ResultBody(BaseModel):
     baseRevision: str | None = None
 
 
+class DisconnectBody(BaseModel):
+    projectId: str = DEFAULT_PROJECT
+
+
 def _verify(project_id: str, capability: str | None) -> None:
     if not registry.verify(project_id, capability):
         raise HTTPException(401, "invalid editor registration")
@@ -104,3 +108,26 @@ async def result(
     if body.baseRevision is not None:
         registry.update_revision(projectId, body.baseRevision)
     return {"ok": True}
+
+
+@router.get("/connections")
+async def connections():
+    """列出所有已注册的 browser 连接（运维）。"""
+    return {
+        "connections": [
+            {
+                "projectId": r.projectId,
+                "editorInstanceId": r.editorInstanceId,
+                "ownershipEpoch": r.ownershipEpoch,
+                "toolNames": r.toolNames,
+            }
+            for r in registry.list()
+        ]
+    }
+
+
+@router.post("/disconnect")
+async def disconnect(body: DisconnectBody):
+    """断开某个 project 的 browser 连接（运维）。"""
+    registry.unregister(body.projectId)
+    return {"ok": True, "projectId": body.projectId}

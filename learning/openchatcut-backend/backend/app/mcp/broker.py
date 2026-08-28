@@ -122,3 +122,7 @@ class Broker:
         for w in waiters:
             if not w.done():
                 w.set_result(None)
+
+    def pending_count(self) -> int:
+        """未结算的在途调用数（mcp_check 用）。"""
+        return len(self._pending)
