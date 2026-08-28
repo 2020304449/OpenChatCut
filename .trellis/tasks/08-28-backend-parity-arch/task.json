@@ -3,7 +3,7 @@
   "name": "backend-parity-arch",
   "title": "架构对齐：server/browser 分离 + MCP 通信层",
   "description": "对齐原版架构：server 决策 / browser 权威分离 + MCP 通信层（external-agent broker）+ 前端持有 EditorCore 真源。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,
