@@ -104,3 +104,18 @@ def test_transcribe_track_no_src_clips():
 def test_probe_media_missing_graceful():
     r = _call("probe_media", {"source": "/nonexistent.mp4"})
     assert r["ok"] is False
+
+
+def test_submit_export_audio_codec_ext(monkeypatch):
+    from app.agent import generation_tools as GT
+    captured = {}
+
+    def fake_render(tl, out_path, **kw):
+        captured["out"] = out_path
+        return {"ok": True, "path": out_path}
+
+    monkeypatch.setattr(GT.export_service, "render_timeline", fake_render)
+    _call("submit_export", {"format": "audio", "codec": "mp3", "name": "bgm"})
+    assert captured["out"].endswith(".mp3")
+    _call("submit_export", {"format": "audio", "codec": "wav", "name": "bgm2"})
+    assert captured["out"].endswith(".wav")

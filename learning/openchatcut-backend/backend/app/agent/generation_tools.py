@@ -19,7 +19,7 @@ from ..services import probe as probe_service
 from ..services.fcpxml import timeline_to_fcpxml
 from ..services.transcription import transcribe_audio
 from .mock_generation import MockJobStore, mock_asset
-from .tools import Tool, ToolContext, _missing_item
+from .tools import Tool, ToolContext
 
 
 def _store() -> MockJobStore:
@@ -96,6 +96,7 @@ class SubmitSoundArgs(BaseModel):
     durationSeconds: float = Field(2.0, ge=0.5, le=30)
     name: str = "音效"
     sourceAssetId: str | None = Field(None, description="sonilo 用：源视频资产")
+    projectId: str | None = Field(None, description="durable 工具项目 id（单体缺省 default）")
     idempotencyKey: str | None = None
 
 
@@ -124,6 +125,7 @@ class SubmitMusicArgs(BaseModel):
     provider: str = "mureka"
     mode: str | None = None
     name: str = "音乐"
+    projectId: str | None = Field(None, description="durable 工具项目 id（单体缺省 default）")
     idempotencyKey: str | None = None
 
 
@@ -142,6 +144,7 @@ class SubmitVideoArgs(BaseModel):
     name: str = "生成视频"
     durationSeconds: float = 5.0
     resolution: str | None = None
+    projectId: str | None = Field(None, description="durable 工具项目 id（单体缺省 default）")
     idempotencyKey: str | None = None
 
 
@@ -172,9 +175,8 @@ def exec_track_progress(args: TrackProgressArgs, ctx: ToolContext) -> dict:
             continue
         # mock：wait 时把 pending job 置完成，生成假资产
         if args.action == "wait" and job.status == "pending":
-            kind = job.args.get("kind", "video")
-            asset_kind = "video" if kind == "video" else "music" if kind == "music" else "sound"
-            a = mock_asset(asset_kind, job.args.get("name", kind))
+            asset_kind = job.kind if job.kind in ("music", "video", "sound", "voice", "image") else "video"
+            a = mock_asset(asset_kind, job.args.get("name", job.kind))
             _add_asset(ctx, a)
             store.complete(job.job_id, {"assetId": a.id, "name": a.name, "src": a.src})
             added_assets.append({"assetId": a.id, "name": a.name, "src": a.src, "kind": asset_kind})
@@ -287,7 +289,10 @@ def exec_submit_export(args: SubmitExportArgs, ctx: ToolContext) -> dict:
             return {"ok": True, "path": out}
         except OSError as exc:
             return {"ok": False, "error": str(exc)}
-    ext = "mp4" if args.codec == "h264" else "webm" if args.codec == "vp8" else "mp4"
+    if args.format == "audio":
+        ext = "mp3" if args.codec == "mp3" else "wav"
+    else:
+        ext = "mp4" if args.codec == "h264" else "webm" if args.codec == "vp8" else "mp4"
     out = _export_path(args.name, ext)
     return export_service.render_timeline(tl, out, format=args.format, codec=args.codec,
                                           fps=fps, start_frame=args.startFrame or 0,

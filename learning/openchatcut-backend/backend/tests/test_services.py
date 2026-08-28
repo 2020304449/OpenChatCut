@@ -52,3 +52,28 @@ def test_transcribe_missing_dep_graceful(monkeypatch):
     r = transcribe_audio("/nonexistent.mp3")
     assert r["ok"] is False
     assert "not installed" in r["error"]
+
+
+def test_fcpxml_escapes_xml_special_chars():
+    from app.domain.item import TimelineItem
+    tl = Timeline(
+        id="tl1", name="a<b>&c", fps=30, width=1920, height=1080,
+        items=(TimelineItem(id="i1", track="V1", startFrame=0, durationInFrames=30,
+                            name="x<y>&z", kind="video"),),
+    )
+    xml = timeline_to_fcpxml(tl)
+    assert 'name="a&lt;b&gt;&amp;c"' in xml
+    assert 'name="x&lt;y&gt;&amp;z"' in xml
+
+
+def test_export_run_error_path(monkeypatch):
+    import subprocess
+    from app.services import export as exp
+
+    def fake_run(cmd, **kw):
+        return subprocess.CompletedProcess(cmd, 1, "", "some ffmpeg error")
+
+    monkeypatch.setattr(exp.subprocess, "run", fake_run)
+    r = exp._run(["ffmpeg", "-y"], "/tmp/out.mp4")
+    assert r["ok"] is False
+    assert "error" in r
