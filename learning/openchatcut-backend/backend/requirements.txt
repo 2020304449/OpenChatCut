@@ -3,3 +3,6 @@ uvicorn[standard]>=0.29
 pydantic>=2.6
 openai>=1.30
 pytest>=8.0
+
+# 转写 ASR（可选，懒加载；未安装时 transcribe_track 返回错误而非崩溃）
+faster-whisper>=1.0
