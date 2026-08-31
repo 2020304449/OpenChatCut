@@ -47,8 +47,9 @@ async function claim(runId: string, toolCallId: string, claimId: string): Promis
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ toolCallId, claimId }),
   })
-  const body = (await res.json()) as { ok?: boolean }
-  return body.ok === true
+  // jimanweb 统一 ResultResponse 包装：{ code, data, success }，claim 结果在 data.ok
+  const body = (await res.json()) as { success?: boolean; data?: { ok?: boolean } }
+  return body.success === true && body.data?.ok === true
 }
 
 async function settle(runId: string, toolCallId: string, claimId: string, argsDigest: string, result: Record<string, unknown>): Promise<void> {
@@ -153,11 +154,13 @@ export async function createAndStartRun(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message, state, supportedTools: SUPPORTED_TOOL_NAMES }),
   })
-  const created = (await createRes.json()) as { runId?: string }
-  if (!created.runId) {
+  // jimanweb 统一 ResultResponse 包装：runId 在 data 里
+  const created = (await createRes.json()) as { success?: boolean; data?: { runId?: string } }
+  const runId = created.data?.runId
+  if (!runId) {
     handlers.onError('create run failed')
     return
   }
-  await fetch(`/api/agent-runs/${created.runId}/start`, { method: 'POST' })
-  await streamServerRun(created.runId, executeTool, ctx, handlers)
+  await fetch(`/api/agent-runs/${runId}/start`, { method: 'POST' })
+  await streamServerRun(runId, executeTool, ctx, handlers)
 }

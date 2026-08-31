@@ -22,12 +22,25 @@ const playhead = ref(0)
 // 内部 run 的 ctx 直接落在真库 store（editor.commands），executeTool 派发 action → 本地 reducer 更新 doc。
 const ctx = { getDoc: () => doc.value, commands }
 
+// 多项目：projectId 走 URL 参数；无则生成 UUID 写回 URL（刷新/分享链接可定位到同一项目）。
+function resolveProjectId(): string {
+  const params = new URLSearchParams(window.location.search)
+  const id = params.get('projectId')
+  if (id) return id
+  const nid = crypto.randomUUID()
+  const url = new URL(window.location.href)
+  url.searchParams.set('projectId', nid)
+  history.replaceState(null, '', url.toString())
+  return nid
+}
+const projectId = resolveProjectId()
+
 // 项目持久化：启动加载存档（无存档回退 demo），编辑后防抖自动保存。
 const hydrated = ref(false)
 
 onMounted(async () => {
   try {
-    const saved = await loadProject()
+    const saved = await loadProject(projectId)
     if (saved) reset(saved)
   } catch (e) {
     console.warn('加载项目失败', e)
@@ -41,7 +54,7 @@ watch(doc, () => {
   if (!hydrated.value) return
   clearTimeout(saveTimer)
   saveTimer = setTimeout(() => {
-    saveProject(doc.value).catch((e) => console.warn('保存项目失败', e))
+    saveProject(projectId, doc.value).catch((e) => console.warn('保存项目失败', e))
   }, 500)
 })
 
@@ -121,6 +134,16 @@ async function exportVideo() {
       alert('导出失败：' + (body?.error ?? res.status))
       return
     }
+
+    // 后端 OSS 模式返回 { ok, url, name }；无 OSS 时降级回传视频字节流。
+    // 用 clone + try-json 判定，不依赖 Content-Type（兼容 jimanweb 旧版本可能误标 video/*）。
+    const data = (await res.clone().json().catch(() => null)) as { ok?: boolean; url?: string; name?: string } | null
+    if (data?.url) {
+      window.open(data.url, '_blank')
+      return
+    }
+
+    // 降级：视频字节流
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
