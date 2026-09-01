@@ -85,7 +85,7 @@ export interface EditorCommands {
   setBackgroundFill(itemId: string, enabled: boolean, strength?: number): void
   replaceMedia(itemId: string, src: string): void
   relinkItem(itemId: string, opts: { src?: string; sourceAssetId?: string; sourceRevision?: string }): void
-  updateWatermark(opts: { enabled?: boolean; text?: string; position?: string; opacity?: number }): void
+  updateWatermark(opts: { enabled?: boolean; text?: string; position?: string; opacity?: number; fontSize?: number; color?: string; margin?: number }): void
   setItemDenoise(itemId: string, denoisedSrc: string | null, strength?: number): void
   setReframeKeyframe(itemId: string, frame: number, focalPointX: number, focalPointY: number, magnification: number): void
   removeReframeKeyframe(itemId: string, frame: number): void

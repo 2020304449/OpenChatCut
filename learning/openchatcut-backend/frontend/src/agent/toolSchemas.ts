@@ -108,8 +108,9 @@ export const SUPPORTED_TOOL_SCHEMAS: readonly AgentFunctionSchema[] = [
     action: action(['update', 'remove']), transitionId: str('转场 ID'), patch: obj('转场补丁'),
   }, { required: ['action', 'transitionId'] }),
   tool('edit_captions', '设置、更新或隐藏字幕', {
-    action: action(['set', 'update', 'set_hidden']), captions: obj('完整字幕数据'),
-    patch: obj('字幕补丁'), hidden: bool('是否隐藏'),
+    action: action(['set', 'update', 'set_hidden']), captions: obj('完整字幕数据'), enabled: bool('是否启用'),
+    patch: obj('字幕补丁'), hidden: bool('是否隐藏'), position: str('字幕位置'), fontSize: num('字幕字号'),
+    color: str('字幕颜色'), outlineColor: str('描边颜色'), outlineWidth: num('描边宽度'),
   }, { required: ['action'] }),
   tool('set_keyframe', '设置关键帧', {
     itemId, prop: str('动画属性'), frame: num('片段内帧', 0), value: num('属性值'), easing: str('缓动名称'),
@@ -160,6 +161,7 @@ export const SUPPORTED_TOOL_SCHEMAS: readonly AgentFunctionSchema[] = [
   }, { required: ['itemId', 'src'] }),
   tool('update_watermark', '更新工程水印', {
     enabled: bool('是否启用'), text: str('水印文字'), position: str('水印位置'), opacity: num('透明度'),
+    fontSize: num('水印字号'), color: str('水印颜色'), margin: num('边距'),
   }),
   tool('set_item_denoise', '设置片段降噪结果', {
     itemId, denoisedSrc: str('降噪媒体地址'), strength: num('降噪强度'),

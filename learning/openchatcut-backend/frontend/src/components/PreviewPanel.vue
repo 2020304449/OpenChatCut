@@ -17,6 +17,11 @@ const videoClips = computed(() =>
 const audioClips = computed(() =>
   tl.value.items.filter((i) => i.track === 'A1' && i.src).sort((a, b) => a.startFrame - b.startFrame),
 )
+const overlayItems = computed(() =>
+  tl.value.items
+    .filter((i) => i.track !== 'V1' && ['image', 'gif', 'svg'].includes(i.kind) && i.src)
+    .sort((a, b) => a.startFrame - b.startFrame),
+)
 
 const totalFrames = computed(() => {
   let m = 0
@@ -34,6 +39,56 @@ function timeLabel(frames: number): string {
 function activeClip(clips: TimelineItem[], frame: number): TimelineItem | undefined {
   return clips.find((c) => frame >= c.startFrame && frame < c.startFrame + c.durationInFrames)
 }
+
+function activeAtFrame(item: TimelineItem, frame: number): boolean {
+  return frame >= item.startFrame && frame < item.startFrame + item.durationInFrames
+}
+
+function positionClass(position: string | null | undefined, fallback = 'bc'): string {
+  const valid = ['tl', 'tc', 'tr', 'ml', 'mc', 'mr', 'bl', 'bc', 'br']
+  return `position-${valid.includes(position ?? '') ? position : fallback}`
+}
+
+function overlayStyle(item: TimelineItem): Record<string, string> {
+  const transform = item.transform ?? {}
+  const scale = transform.scale ?? 1
+  const scaleX = transform.scaleX ?? scale
+  const scaleY = transform.scaleY ?? scale
+  const x = transform.x ?? 0
+  const y = transform.y ?? 0
+  const style: Record<string, string> = {
+    left: `calc(50% + ${x}%)`,
+    top: `calc(50% + ${y}%)`,
+    transform: `translate(-50%, -50%) scale(${scaleX}, ${scaleY}) rotate(${transform.rotation ?? 0}deg)`,
+    opacity: String(transform.opacity ?? 1),
+  }
+  // 已知素材尺寸时，用画布百分比预览，避免不同窗口大小下 Logo 跳动。
+  if (item.width && tl.value.width) style.width = `${(item.width / tl.value.width) * 100}%`
+  return style
+}
+
+const activeCaption = computed(() => {
+  const captions = tl.value.captions
+  if (!captions || !captions.enabled || tl.value.captionsHidden) return null
+  return captions.items.find((cue) => props.playhead >= cue.startFrame && props.playhead < cue.endFrame) ?? null
+})
+
+const captionStyle = computed(() => {
+  const captions = tl.value.captions
+  return {
+    fontSize: `${captions?.fontSize ?? 42}px`,
+    color: captions?.color ?? '#ffffff',
+    WebkitTextStroke: `${captions?.outlineWidth ?? 2}px ${captions?.outlineColor ?? '#000000'}`,
+    textShadow: `0 0 ${captions?.outlineWidth ?? 2}px ${captions?.outlineColor ?? '#000000'}`,
+  }
+})
+
+const watermarkStyle = computed(() => ({
+  opacity: String(tl.value.watermark?.opacity ?? 0.7),
+  fontSize: `${tl.value.watermark?.fontSize ?? 28}px`,
+  color: tl.value.watermark?.color ?? '#ffffff',
+  '--overlay-margin': `${tl.value.watermark?.margin ?? 24}px`,
+}))
 
 // ── 播放：播放头为墙钟主时钟，<video>/<audio> 跟随 ─────────────────────────
 
@@ -151,8 +206,29 @@ onUnmounted(() => cancelAnimationFrame(rafId))
       <button class="play" @click="toggle">{{ playing ? '暂停' : '播放' }}</button>
       <span class="preview-time">{{ timeLabel(playhead) }} / {{ timeLabel(totalFrames) }}</span>
     </div>
-    <div class="preview-stage">
+    <div class="preview-stage" :style="{ aspectRatio: `${tl.width ?? 16} / ${tl.height ?? 9}` }">
       <video ref="videoEl" class="preview-video" muted playsinline></video>
+      <img
+        v-for="item in overlayItems"
+        v-show="activeAtFrame(item, playhead)"
+        :key="item.id"
+        class="preview-overlay"
+        :src="item.src ?? ''"
+        :alt="item.name"
+        :style="overlayStyle(item)"
+      />
+      <div
+        v-if="tl.watermark?.enabled && tl.watermark.text"
+        class="preview-watermark"
+        :class="positionClass(tl.watermark.position, 'br')"
+        :style="watermarkStyle"
+      >{{ tl.watermark.text }}</div>
+      <div
+        v-if="activeCaption"
+        class="preview-caption"
+        :class="positionClass(tl.captions?.position, 'bc')"
+        :style="captionStyle"
+      >{{ activeCaption.text }}</div>
       <audio ref="audioEl"></audio>
       <div v-if="!videoClips.length" class="empty">（无视频片段可预览）</div>
     </div>

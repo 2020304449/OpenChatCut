@@ -132,6 +132,16 @@ export interface CaptionCue {
 export interface CaptionsData {
   enabled: boolean
   items: CaptionCue[]
+  /** 字幕在画布上的九宫格位置，默认底部居中。 */
+  position?: string
+  /** 字幕字号，单位为画布像素。 */
+  fontSize?: number
+  /** 字幕文字颜色。 */
+  color?: string
+  /** 字幕描边颜色。 */
+  outlineColor?: string
+  /** 字幕描边宽度，单位为画布像素。 */
+  outlineWidth?: number
 }
 
 export interface Marker {
@@ -178,6 +188,12 @@ export interface Watermark {
   text?: string
   position?: string
   opacity?: number
+  /** 水印字号，单位为画布像素。 */
+  fontSize?: number
+  /** 水印文字颜色。 */
+  color?: string
+  /** 水印与画布边缘的距离，单位为画布像素。 */
+  margin?: number
 }
 
 export interface TimelineLinkGroup {

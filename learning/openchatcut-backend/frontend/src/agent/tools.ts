@@ -370,6 +370,11 @@ export function executeTool(name: string, args: Record<string, unknown>, ctx: To
         const caps: CaptionsData = {
           enabled: (args.enabled as boolean | undefined) !== false,
           items: texts.map((t, i) => ({ startFrame: i * 90, endFrame: (i + 1) * 90, text: t })),
+          position: args.position as string | undefined,
+          fontSize: args.fontSize as number | undefined,
+          color: args.color as string | undefined,
+          outlineColor: args.outlineColor as string | undefined,
+          outlineWidth: args.outlineWidth as number | undefined,
         }
         ctx.commands.setCaptions(caps)
         return { ok: true, count: texts.length }
@@ -377,6 +382,11 @@ export function executeTool(name: string, args: Record<string, unknown>, ctx: To
       if (action === 'update') {
         const patch: Partial<CaptionsData> = {}
         if (typeof args.enabled === 'boolean') patch.enabled = args.enabled
+        if (typeof args.position === 'string') patch.position = args.position
+        if (typeof args.fontSize === 'number') patch.fontSize = args.fontSize
+        if (typeof args.color === 'string') patch.color = args.color
+        if (typeof args.outlineColor === 'string') patch.outlineColor = args.outlineColor
+        if (typeof args.outlineWidth === 'number') patch.outlineWidth = args.outlineWidth
         ctx.commands.updateCaptions(patch)
         return { ok: true }
       }
@@ -549,6 +559,9 @@ export function executeTool(name: string, args: Record<string, unknown>, ctx: To
         text: args.text as string | undefined,
         position: args.position as string | undefined,
         opacity: args.opacity as number | undefined,
+        fontSize: args.fontSize as number | undefined,
+        color: args.color as string | undefined,
+        margin: args.margin as number | undefined,
       })
       return { ok: true }
     case 'set_item_denoise': {

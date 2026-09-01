@@ -84,7 +84,7 @@ export type EditAction =
   | { type: 'set_background_fill'; itemId: string; enabled: boolean; strength?: number }
   | { type: 'replace_media'; itemId: string; src: string }
   | { type: 'relink_item'; itemId: string; src?: string; sourceAssetId?: string; sourceRevision?: string }
-  | { type: 'update_watermark'; enabled?: boolean; text?: string; position?: string; opacity?: number }
+  | { type: 'update_watermark'; enabled?: boolean; text?: string; position?: string; opacity?: number; fontSize?: number; color?: string; margin?: number }
   | { type: 'set_item_denoise'; itemId: string; denoisedSrc: string | null; strength?: number }
   | { type: 'set_reframe_keyframe'; itemId: string; frame: number; focalPointX: number; focalPointY: number; magnification: number }
   | { type: 'remove_reframe_keyframe'; itemId: string; frame: number }
@@ -454,6 +454,9 @@ export function projectReduce(doc: ProjectDoc, action: EditAction): ProjectDoc {
         if (action.text !== undefined) updates.text = action.text
         if (action.position !== undefined) updates.position = action.position
         if (action.opacity !== undefined) updates.opacity = action.opacity
+        if (action.fontSize !== undefined) updates.fontSize = action.fontSize
+        if (action.color !== undefined) updates.color = action.color
+        if (action.margin !== undefined) updates.margin = action.margin
         return { ...tl, watermark: { ...cur, ...updates } }
       })
 
