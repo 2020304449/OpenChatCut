@@ -73,6 +73,11 @@ function readProject(ctx: ToolContext): Record<string, unknown> {
     activeTimelineId: doc.activeTimelineId,
     timelines: doc.timelines.map((t) => ({ id: t.id, name: t.name, items: t.items.length })),
     assetCount: doc.assets.length,
+    assets: doc.assets.map((a) => ({
+      id: a.id, name: a.name, kind: a.kind, src: a.src,
+      durationInFrames: a.durationInFrames, width: a.width, height: a.height,
+      favorite: a.favorite, folderId: a.folderId,
+    })),
   }
 }
 
@@ -125,20 +130,102 @@ export function executeTool(name: string, args: Record<string, unknown>, ctx: To
     }
 
     // ── 片段基础 ──
-    case 'add_clip': {
-      const item: TimelineItem = {
-        id: newId(),
-        track: asStr(args.track, 'V1'),
-        startFrame: asNum(args.startFrame),
-        durationInFrames: asNum(args.durationInFrames),
-        name: asStr(args.label),
-        kind: asStr(args.kind, 'video') as TimelineItem['kind'],
-        src: (args.src as string | null | undefined) ?? null,
+    case 'edit_item': {
+      const tl = activeTimeline(ctx.getDoc())
+      const doc = ctx.getDoc()
+      const appendStart = (track: string): number =>
+        tl.items.filter((i) => i.track === track).reduce((m, i) => Math.max(m, i.startFrame + i.durationInFrames), 0)
+      const added: Record<string, unknown>[] = []
+      const updated: Record<string, unknown>[] = []
+      const deleted: Record<string, unknown>[] = []
+
+      // adds：素材池引用 + authored text/solid
+      for (const raw of Array.isArray(args.adds) ? args.adds : []) {
+        const e = asDict(raw)
+        const type = asStr(e.type)
+        const track = asStr(e.track) || (type === 'audio' ? 'A1' : 'V1')
+        const startFrame = typeof e.fromFrame === 'number' ? e.fromFrame
+          : typeof e.startFrame === 'number' ? e.startFrame : appendStart(track)
+        let item: TimelineItem
+        if (type === 'text' || type === 'solid') {
+          const props: Record<string, unknown> = {}
+          if (type === 'text') {
+            props.text = asStr(e.text, '文字')
+            props.color = asStr(e.color, '#ffffff')
+            props.align = e.align === 'left' || e.align === 'right' || e.align === 'center' ? e.align : 'center'
+            if (typeof e.fontSize === 'number') props.fontSize = e.fontSize
+            if (typeof e.fontWeight === 'number') props.fontWeight = e.fontWeight
+          } else {
+            props.color = asStr(e.color, '#1a1a1a')
+          }
+          item = {
+            id: newId(), track, startFrame,
+            durationInFrames: typeof e.durationInFrames === 'number' ? e.durationInFrames : (type === 'text' ? 90 : 150),
+            name: asStr(e.name) || (type === 'text' ? '文字' : '纯色'),
+            kind: type as TimelineItem['kind'],
+            props,
+          }
+        } else {
+          const assetId = asStr(e.assetId)
+          const asset = doc.assets.find((a) => a.id === assetId)
+          if (!asset) return { ok: false, error: `asset not found: ${assetId}` }
+          item = {
+            id: newId(), track, startFrame,
+            durationInFrames: typeof e.durationInFrames === 'number' ? e.durationInFrames : (asset.durationInFrames ?? 0),
+            name: asset.name,
+            kind: asset.kind as TimelineItem['kind'],
+            src: asset.src ?? null,
+            sourceAssetId: asset.id,
+            sourceFilename: asset.name,
+          }
+        }
+        ctx.commands.addItem(item)
+        added.push({ itemId: item.id, track, startFrame, durationInFrames: item.durationInFrames, kind: item.kind })
       }
-      ctx.commands.addItem(item)
-      return { ok: true, itemId: item.id, label: item.name }
+
+      // updates：移动/裁剪/重定时/属性/音量/淡入淡出/变换/滤镜/速率
+      for (const raw of Array.isArray(args.updates) ? args.updates : []) {
+        const e = asDict(raw)
+        const id = asStr(e.itemId) || asStr(e.id)
+        const missing = missingItem(ctx, id)
+        if (missing) return missing
+        const hasField = ['track', 'fromFrame', 'startFrame', 'durationInFrames', 'srcInFrame', 'sourceStartFrame',
+          'props', 'volume', 'fadeInSeconds', 'fadeOutSeconds', 'transform', 'filters', 'speed', 'playbackRate']
+          .some((k) => e[k] !== undefined)
+        if (!hasField) return { ok: false, error: 'update needs at least one field' }
+        const sf = typeof e.fromFrame === 'number' ? e.fromFrame : typeof e.startFrame === 'number' ? e.startFrame : undefined
+        const srcIn = typeof e.srcInFrame === 'number' ? e.srcInFrame : typeof e.sourceStartFrame === 'number' ? e.sourceStartFrame : undefined
+        if (e.track !== undefined || sf !== undefined) ctx.commands.moveItem(id, e.track as string | undefined, sf)
+        if (e.durationInFrames !== undefined || srcIn !== undefined) ctx.commands.retimeItem(id, { durationInFrames: e.durationInFrames as number | undefined, srcInFrame: srcIn })
+        if (e.props !== undefined) ctx.commands.updateItemProps(id, { props: asDict(e.props) } as never)
+        if (typeof e.volume === 'number') ctx.commands.setItemVolume(id, e.volume)
+        if (e.fadeInSeconds !== undefined || e.fadeOutSeconds !== undefined) {
+          const fps = tl.fps || 30
+          ctx.commands.setItemFade(id, {
+            fadeInFrames: typeof e.fadeInSeconds === 'number' ? Math.round(e.fadeInSeconds * fps) : undefined,
+            fadeOutFrames: typeof e.fadeOutSeconds === 'number' ? Math.round(e.fadeOutSeconds * fps) : undefined,
+          })
+        }
+        if (e.transform !== undefined) ctx.commands.setItemTransform(id, asDict(e.transform) as never)
+        if (e.filters !== undefined) ctx.commands.setItemFilters(id, asDict(e.filters) as never)
+        const rate = typeof e.speed === 'number' ? e.speed : typeof e.playbackRate === 'number' ? e.playbackRate : undefined
+        if (rate !== undefined) ctx.commands.setItemSpeed(id, rate)
+        updated.push({ itemId: id })
+      }
+
+      // deletes：按 itemId 移除
+      for (const raw of Array.isArray(args.deletes) ? args.deletes : []) {
+        const e = asDict(raw)
+        const id = asStr(e.itemId) || asStr(e.id)
+        const missing = missingItem(ctx, id)
+        if (missing) return missing
+        ctx.commands.removeItem(id)
+        deleted.push({ itemId: id })
+      }
+
+      return { ok: true, added, updated, deleted }
     }
-    case 'remove_clip': {
+    case 'remove_item': {
       const id = asStr(args.itemId)
       const e = missingItem(ctx, id)
       if (e) return e
@@ -148,7 +235,7 @@ export function executeTool(name: string, args: Record<string, unknown>, ctx: To
     case 'clear_timeline':
       ctx.commands.clearTimeline()
       return { ok: true }
-    case 'duplicate_clip': {
+    case 'duplicate_item': {
       const id = asStr(args.itemId)
       const e = missingItem(ctx, id)
       if (e) return e
@@ -164,14 +251,14 @@ export function executeTool(name: string, args: Record<string, unknown>, ctx: To
       ctx.commands.splitItem(id, asNum(args.atFrame), nid)
       return { ok: true, itemId: nid, atFrame: asNum(args.atFrame) }
     }
-    case 'move_clip': {
+    case 'move_item': {
       const id = asStr(args.itemId)
       const e = missingItem(ctx, id)
       if (e) return e
       ctx.commands.moveItem(id, args.track as string | undefined, args.startFrame as number | undefined)
       return { ok: true, itemId: id }
     }
-    case 'set_clip_timing': {
+    case 'set_item_timing': {
       const id = asStr(args.itemId)
       const e = missingItem(ctx, id)
       if (e) return e
@@ -182,7 +269,7 @@ export function executeTool(name: string, args: Record<string, unknown>, ctx: To
       })
       return { ok: true, itemId: id }
     }
-    case 'update_clip_props': {
+    case 'update_item_props': {
       const id = asStr(args.itemId)
       const e = missingItem(ctx, id)
       if (e) return e
@@ -343,6 +430,10 @@ export function executeTool(name: string, args: Record<string, unknown>, ctx: To
     // ── 素材池 ──
     case 'manage_media_pool': {
       const action = asStr(args.action)
+      if (action === 'list') {
+        const doc = ctx.getDoc()
+        return { ok: true, assets: doc.assets.map((a) => ({ id: a.id, name: a.name, kind: a.kind, src: a.src, durationInFrames: a.durationInFrames, width: a.width, height: a.height, favorite: a.favorite, folderId: a.folderId })), folders: (doc.mediaFolders ?? []).map((f) => ({ id: f.id, name: f.name })) }
+      }
       if (action === 'add_asset') {
         const a: MediaAsset = { id: asStr(args.assetId) || newId(), name: asStr(args.name), kind: asStr(args.kind, 'video'), src: asStr(args.src) }
         ctx.commands.addAsset(a)
@@ -353,8 +444,18 @@ export function executeTool(name: string, args: Record<string, unknown>, ctx: To
         ctx.commands.createFolder(f)
         return { ok: true, folderId: f.id }
       }
+      if (action === 'rename_folder') { ctx.commands.renameFolder(asStr(args.folderId), asStr(args.newName) || asStr(args.name)); return { ok: true } }
+      if (action === 'delete_folder') { ctx.commands.deleteFolder(asStr(args.folderId)); return { ok: true } }
       if (action === 'move_assets') { ctx.commands.moveAssets(asStrArr(args.ids), args.folderId as string | undefined); return { ok: true } }
       if (action === 'remove_asset') { ctx.commands.removeAsset(asStr(args.assetId)); return { ok: true, assetId: asStr(args.assetId) } }
+      if (action === 'rename_asset') { ctx.commands.updateAsset(asStr(args.assetId), { name: asStr(args.newName) || asStr(args.name) }); return { ok: true, assetId: asStr(args.assetId) } }
+      if (action === 'favorite_assets' || action === 'unfavorite_assets') {
+        const fav = action === 'favorite_assets'
+        const ids = asStrArr(args.assetIds).length ? asStrArr(args.assetIds) : (asStr(args.assetId) ? [asStr(args.assetId)] : [])
+        for (const id of ids) ctx.commands.updateAsset(id, { favorite: fav })
+        return { ok: true }
+      }
+      if (action === 'relink_asset') { ctx.commands.relinkAsset(asStr(args.assetId), asStr(args.src)); return { ok: true, assetId: asStr(args.assetId) } }
       return { ok: false, error: `unknown action: ${action}` }
     }
 
@@ -476,14 +577,51 @@ export function executeTool(name: string, args: Record<string, unknown>, ctx: To
       if (action === 'set_hidden') { ctx.commands.setTimelineHidden(asStr(args.timelineId), asBool(args.hidden)); return { ok: true, timelineId: asStr(args.timelineId) } }
       return { ok: false, error: `unknown action: ${action}` }
     }
-    case 'edit_media_pool': {
+    case 'edit_asset': {
       const action = asStr(args.action)
-      if (action === 'rename_folder') { ctx.commands.renameFolder(asStr(args.folderId), asStr(args.name)); return { ok: true } }
-      if (action === 'delete_folder') { ctx.commands.deleteFolder(asStr(args.folderId)); return { ok: true } }
-      if (action === 'update_asset') { ctx.commands.updateAsset(asStr(args.assetId), asDict(args.patch) as never); return { ok: true, assetId: asStr(args.assetId) } }
-      if (action === 'relink_asset') { ctx.commands.relinkAsset(asStr(args.assetId), asStr(args.src)); return { ok: true, assetId: asStr(args.assetId) } }
-      if (action === 'canonicalize_asset') { ctx.commands.canonicalizeAsset(asStr(args.assetId), asStr(args.canonicalId)); return { ok: true } }
+      const assetId = asStr(args.assetId)
+      if (action === 'update') {
+        const patch: Record<string, unknown> = { ...asDict(args.patch) }
+        if (args.name !== undefined) patch.name = asStr(args.name)
+        if (args.favorite !== undefined) patch.favorite = asBool(args.favorite)
+        if (Object.keys(patch).length === 0) return { ok: false, error: 'update 需要 name/favorite/patch 至少一项' }
+        ctx.commands.updateAsset(assetId, patch as never)
+        return { ok: true, assetId }
+      }
+      if (action === 'delete') { ctx.commands.removeAsset(assetId); return { ok: true, assetId } }
       return { ok: false, error: `unknown action: ${action}` }
+    }
+    case 'list_audio': {
+      const doc = ctx.getDoc()
+      const audios = doc.assets.filter((a) => a.kind === 'audio')
+      return { ok: true, audio: audios.map((a) => ({ id: a.id, name: a.name, kind: a.kind, src: a.src, durationInFrames: a.durationInFrames, width: a.width, height: a.height, favorite: a.favorite, folderId: a.folderId })) }
+    }
+    case 'add_audio': {
+      const doc = ctx.getDoc()
+      let asset: MediaAsset | undefined
+      if (asStr(args.assetId)) {
+        asset = doc.assets.find((a) => a.id === asStr(args.assetId) && a.kind === 'audio')
+        if (!asset) return { ok: false, error: `audio asset not found: ${asStr(args.assetId)}` }
+      } else if (asStr(args.name)) {
+        const q = asStr(args.name).toLowerCase()
+        const matches = doc.assets.filter((a) => a.kind === 'audio' && a.name.toLowerCase().includes(q))
+        if (!matches.length) return { ok: false, error: `no audio asset matching: ${asStr(args.name)}` }
+        asset = matches[0]
+      } else {
+        return { ok: false, error: '需要 name 或 assetId' }
+      }
+      const track = asStr(args.track, 'A1')
+      const tl = activeTimeline(doc)
+      const startFrame = typeof args.startFrame === 'number' ? args.startFrame
+        : tl.items.filter((i) => i.track === track).reduce((m, i) => Math.max(m, i.startFrame + i.durationInFrames), 0)
+      const durationInFrames = typeof args.durationInFrames === 'number' ? args.durationInFrames : (asset.durationInFrames ?? 0)
+      const item: TimelineItem = {
+        id: newId(), track, startFrame, durationInFrames,
+        name: asset.name, kind: 'audio', src: asset.src ?? null,
+        sourceAssetId: asset.id, sourceFilename: asset.name,
+      }
+      ctx.commands.addItem(item)
+      return { ok: true, itemId: item.id, track, startFrame, durationInFrames }
     }
     case 'set_design_style': {
       if (asStr(args.action) === 'set') ctx.commands.setDesignStyle((args.style as Record<string, unknown> | null) ?? null)
@@ -558,14 +696,14 @@ export const SUPPORTED_TOOL_NAMES: readonly string[] = [
   // 轨道
   'edit_track',
   // 片段基础
-  'add_clip',
-  'remove_clip',
+  'edit_item',
+  'remove_item',
   'clear_timeline',
-  'duplicate_clip',
+  'duplicate_item',
   'split_clip',
-  'move_clip',
-  'set_clip_timing',
-  'update_clip_props',
+  'move_item',
+  'set_item_timing',
+  'update_item_props',
   // 片段属性
   'set_clip_volume',
   'set_clip_fade',
@@ -589,6 +727,8 @@ export const SUPPORTED_TOOL_NAMES: readonly string[] = [
   'select_clips',
   // 素材池
   'manage_media_pool',
+  'list_audio',
+  'add_audio',
   // 撤销/重做
   'undo_last_change',
   'redo_last_change',
@@ -606,7 +746,7 @@ export const SUPPORTED_TOOL_NAMES: readonly string[] = [
   'set_reframe_keyframe',
   // 项目级
   'manage_timelines',
-  'edit_media_pool',
+  'edit_asset',
   'set_design_style',
   'set_full_state',
   // 多机位

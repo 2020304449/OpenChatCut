@@ -14,11 +14,11 @@ function storeCtx(initial: ProjectDoc = defaultProject()): { ctx: ToolContext; g
 }
 
 describe('executeTool 工具==命令', () => {
-  it('add_clip / set_clip_volume / read_timeline', () => {
+  it('edit_item adds / set_clip_volume / read_timeline', () => {
     const { ctx, getDoc } = storeCtx()
-    const add = executeTool('add_clip', { label: 'A', track: 'V1', startFrame: 0, durationInFrames: 90 }, ctx)
+    const add = executeTool('edit_item', { adds: [{ type: 'solid', color: '#000000', track: 'V1', fromFrame: 0, durationInFrames: 90 }] }, ctx)
     expect(add.ok).toBe(true)
-    const itemId = (add as { itemId: string }).itemId
+    const itemId = (add as { added: { itemId: string }[] }).added[0].itemId
 
     expect(executeTool('set_clip_volume', { itemId, volume: 0.5 }, ctx).ok).toBe(true)
     const item = activeTimeline(getDoc()).items.find((i) => i.id === itemId)
@@ -28,9 +28,9 @@ describe('executeTool 工具==命令', () => {
     expect(read.ok).toBe(true)
   })
 
-  it('remove_clip 找不到片段返回错误', () => {
+  it('remove_item 找不到片段返回错误', () => {
     const { ctx } = storeCtx()
-    const r = executeTool('remove_clip', { itemId: '不存在' }, ctx)
+    const r = executeTool('remove_item', { itemId: '不存在' }, ctx)
     expect(r.ok).toBe(false)
   })
 
@@ -52,12 +52,39 @@ describe('executeTool 工具==命令', () => {
 
   it('set_keyframe / set_clip_transform', () => {
     const { ctx, getDoc } = storeCtx()
-    const add = executeTool('add_clip', { label: 'A', track: 'V1', startFrame: 0, durationInFrames: 90 }, ctx) as { itemId: string }
-    expect(executeTool('set_clip_transform', { itemId: add.itemId, patch: { x: 10, rotation: 45 } }, ctx).ok).toBe(true)
-    expect(executeTool('set_keyframe', { itemId: add.itemId, prop: 'x', frame: 30, value: 200 }, ctx).ok).toBe(true)
-    const item = activeTimeline(getDoc()).items.find((i) => i.id === add.itemId)
+    const add = executeTool('edit_item', { adds: [{ type: 'solid', color: '#000000', track: 'V1', fromFrame: 0, durationInFrames: 90 }] }, ctx) as { added: { itemId: string }[] }
+    const itemId = add.added[0].itemId
+    expect(executeTool('set_clip_transform', { itemId, patch: { x: 10, rotation: 45 } }, ctx).ok).toBe(true)
+    expect(executeTool('set_keyframe', { itemId, prop: 'x', frame: 30, value: 200 }, ctx).ok).toBe(true)
+    const item = activeTimeline(getDoc()).items.find((i) => i.id === itemId)
     expect(item?.transform?.x).toBe(10)
     expect(item?.keyframes?.['x']?.[0]?.value).toBe(200)
+  })
+
+  it('edit_item updates/deletes + authored text/solid', () => {
+    const { ctx, getDoc } = storeCtx()
+    const add = executeTool('edit_item', {
+      adds: [
+        { type: 'text', text: '标题', color: '#ffcc00', fromFrame: 0, durationInFrames: 60 },
+        { type: 'solid', color: '#112233', durationInFrames: 45 },
+      ],
+    }, ctx) as { ok: boolean; added: { itemId: string }[] }
+    expect(add.ok).toBe(true)
+    const textId = add.added[0].itemId
+    const text = activeTimeline(getDoc()).items.find((i) => i.id === textId)
+    expect(text?.kind).toBe('text')
+    expect(text?.props?.text).toBe('标题')
+
+    // update：移动 + 改时长 + 音量
+    expect(executeTool('edit_item', { updates: [{ itemId: textId, fromFrame: 10, durationInFrames: 100, volume: 0.5 }] }, ctx).ok).toBe(true)
+    const moved = activeTimeline(getDoc()).items.find((i) => i.id === textId)
+    expect(moved?.startFrame).toBe(10)
+    expect(moved?.durationInFrames).toBe(100)
+    expect(moved?.volume).toBe(0.5)
+
+    // delete
+    expect(executeTool('edit_item', { deletes: [{ itemId: textId }] }, ctx).ok).toBe(true)
+    expect(activeTimeline(getDoc()).items.some((i) => i.id === textId)).toBe(false)
   })
 
   it('未知工具返回 not implemented', () => {
@@ -85,7 +112,7 @@ describe('edit-session 三段式', () => {
     const session = beginEditSession(base, 'auto')
 
     // 在 draft 上执行
-    executeTool('add_clip', { label: '草稿', track: 'V1', startFrame: 0, durationInFrames: 90 }, session.toolContext)
+    executeTool('edit_item', { adds: [{ type: 'solid', color: '#000000', track: 'V1', fromFrame: 0, durationInFrames: 90 }] }, session.toolContext)
     expect(activeTimeline(session.getDoc()).items.length).toBe(1)
     expect(activeTimeline(base).items.length).toBe(0) // 真库未污染
 
@@ -97,7 +124,7 @@ describe('edit-session 三段式', () => {
 
   it('review 后 session 清空 actions', () => {
     const session = beginEditSession(defaultProject(), 'auto')
-    executeTool('add_clip', { label: 'A', track: 'V1', startFrame: 0, durationInFrames: 90 }, session.toolContext)
+    executeTool('edit_item', { adds: [{ type: 'solid', color: '#000000', track: 'V1', fromFrame: 0, durationInFrames: 90 }] }, session.toolContext)
     session.review()
     // takeActions 已清空，再次 review 应无新改动
     const again = session.review()
