@@ -748,23 +748,27 @@ const NON_MUTATION_TYPES: ReadonlySet<string> = new Set([
 ])
 
 export function initHistory(initial: ProjectDoc): History {
-  return { past: [], present: initial, future: [] }
+  return { past: [], present: { ...initial, docVersion: Math.max(1, initial.docVersion ?? 1) }, future: [] }
 }
 
 export function historyReduce(h: History, action: Action): History {
   if (action.type === 'undo') {
     if (h.past.length === 0) return h
+    // 撤销恢复内容快照，但版本不能随历史快照回退；它本身也是一次新的工程变更。
+    const restored = { ...h.past[h.past.length - 1], docVersion: h.present.docVersion + 1 }
     return {
       past: h.past.slice(0, -1),
-      present: h.past[h.past.length - 1],
+      present: restored,
       future: [h.present, ...h.future],
     }
   }
   if (action.type === 'redo') {
     if (h.future.length === 0) return h
+    // redo 与 undo 一样产生新版本，避免 docVersion 在历史栈中来回跳变。
+    const restored = { ...h.future[0], docVersion: h.present.docVersion + 1 }
     return {
       past: [...h.past, h.present],
-      present: h.future[0],
+      present: restored,
       future: h.future.slice(1),
     }
   }
@@ -774,9 +778,11 @@ export function historyReduce(h: History, action: Action): History {
     // 只换 present，历史/redo 栈不变（选择/导航不产生撤销节点）
     return { ...h, present: next }
   }
+  // 普通编辑的版本递增集中在 reducer 历史边界，命令和组件不各自维护计数。
+  const versioned = { ...next, docVersion: h.present.docVersion + 1 }
   return {
     past: [...h.past, h.present].slice(-HISTORY_LIMIT),
-    present: next,
+    present: versioned,
     future: [],
   }
 }

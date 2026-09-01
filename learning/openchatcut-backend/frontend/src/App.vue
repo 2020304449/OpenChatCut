@@ -8,10 +8,12 @@ import ToolCallLog from './components/ToolCallLog.vue'
 import { useEditor } from './editor/store'
 import { demoProject } from './editor/demo'
 import { executeTool } from './agent/tools'
-import { createAndStartRun, type ToolCallEvent } from './bridge/serverRun'
+import { ProposalCoordinator } from './agent/proposal'
+import { createAndStreamRun, type ToolCallEvent } from './bridge/serverRun'
 import { loadProject, saveProject } from './bridge/project'
+import { activeTimeline } from './editor/types'
 
-const { doc, commands, canUndo, canRedo, reset } = useEditor(demoProject())
+const { doc, commands, canUndo, canRedo, reset, commitProposal } = useEditor(demoProject())
 
 const messages = ref<{ role: 'user' | 'assistant'; text: string }[]>([])
 const toolCalls = ref<ToolCallEvent[]>([])
@@ -19,15 +21,19 @@ const busy = ref(false)
 const playing = ref(false)
 const playhead = ref(0)
 
-// 内部 run 的 ctx 直接落在真库 store（editor.commands），executeTool 派发 action → 本地 reducer 更新 doc。
-const ctx = { getDoc: () => doc.value, commands }
+const proposalCoordinator = new ProposalCoordinator({
+  getDoc: () => doc.value,
+  commitProposal,
+  executeTool,
+})
 
-// 多项目：projectId 走 URL 参数；无则生成 UUID 写回 URL（刷新/分享链接可定位到同一项目）。
+// 多项目：projectId 走 URL 参数；无则生成不超过 20 位的十进制 ID 写回 URL。
+// 以字符串保存和传输，避免 bigint 项目 ID 在 JavaScript Number 中发生精度丢失。
 function resolveProjectId(): string {
   const params = new URLSearchParams(window.location.search)
   const id = params.get('projectId')
   if (id) return id
-  const nid = crypto.randomUUID()
+  const nid = `${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`.slice(0, 20)
   const url = new URL(window.location.href)
   url.searchParams.set('projectId', nid)
   history.replaceState(null, '', url.toString())
@@ -79,7 +85,7 @@ async function send(message: string) {
   messages.value.push({ role: 'assistant', text: '' })
 
   try {
-    await createAndStartRun(message, doc.value, executeTool, ctx, {
+    await createAndStreamRun({ message, projectId, state: doc.value, proposalCoordinator, handlers: {
       onAssistant(text) {
         const last = messages.value[messages.value.length - 1]
         last.text += text
@@ -95,7 +101,13 @@ async function send(message: string) {
         return requestApproval(name, args)
       },
       onState() {
-        // browser 权威：doc 已由 executeTool 经本地 reducer 更新，server 的 state 事件无需回填。
+        // 浏览器是工程权威；state 事件只用于展示服务端状态，不能覆盖本地未保存编辑。
+      },
+      async onApprovedSideEffect(name, args) {
+        if (name !== 'submit_export') return { ok: false, error: `不支持的副作用工具：${name}` }
+        // 审批后的顺序固定为 save -> export，避免渲染读取到旧工程快照。
+        await saveProject(projectId, doc.value, true)
+        return exportProject(args)
       },
       onError(msg) {
         messages.value[messages.value.length - 1].text = '出错：' + msg
@@ -104,7 +116,7 @@ async function send(message: string) {
       onDone() {
         busy.value = false
       },
-    })
+    }})
   } catch (e) {
     busy.value = false
     messages.value[messages.value.length - 1].text = '请求失败：' + (e as Error).message
@@ -124,38 +136,45 @@ const exporting = ref(false)
 async function exportVideo() {
   exporting.value = true
   try {
-    const res = await fetch('/api/export', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ state: doc.value, name: 'demo', format: 'video', codec: 'h264' }),
-    })
-    if (!res.ok) {
-      const body = (await res.json().catch(() => null)) as { error?: string } | null
-      alert('导出失败：' + (body?.error ?? res.status))
-      return
-    }
-
-    // 后端 OSS 模式返回 { ok, url, name }；无 OSS 时降级回传视频字节流。
-    // 用 clone + try-json 判定，不依赖 Content-Type（兼容 jimanweb 旧版本可能误标 video/*）。
-    const data = (await res.clone().json().catch(() => null)) as { ok?: boolean; url?: string; name?: string } | null
-    if (data?.url) {
-      window.open(data.url, '_blank')
-      return
-    }
-
-    // 降级：视频字节流
-    const blob = await res.blob()
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'demo.mp4'
-    a.click()
-    URL.revokeObjectURL(url)
+    await saveProject(projectId, doc.value, true)
+    const result = await exportProject({ format: 'video', codec: 'h264', fps: activeTimeline(doc.value).fps, name: 'demo' })
+    if (result.url) window.open(String(result.url), '_blank')
   } catch (e) {
     alert('导出失败：' + (e as Error).message)
   } finally {
     exporting.value = false
   }
+}
+
+async function exportProject(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const format = args.format === 'audio' ? 'audio' : 'video'
+  const codec = typeof args.codec === 'string' ? args.codec : (format === 'audio' ? 'mp3' : 'h264')
+  const fps = typeof args.fps === 'number' ? args.fps : activeTimeline(doc.value).fps
+  const name = typeof args.name === 'string' && args.name ? args.name : 'demo'
+  const response = await fetch('/api/export', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    // 导出接口只接受五字段；工程由 jimanweb 按当前用户 projectId 读取。
+    body: JSON.stringify({ projectId, format, codec, fps, name }),
+  })
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { error?: string; message?: string } | null
+    throw new Error(body?.error ?? body?.message ?? `HTTP ${response.status}`)
+  }
+  const payload = (await response.clone().json().catch(() => null)) as Record<string, unknown> | null
+  if (payload) {
+    // jimanweb 统一 ResultResponse 时取 data；兼容旧网关直返 {ok,url}。
+    const data = payload.data && typeof payload.data === 'object' ? payload.data as Record<string, unknown> : payload
+    return data
+  }
+  const blob = await response.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${name}.${format === 'audio' ? codec : 'mp4'}`
+  a.click()
+  URL.revokeObjectURL(url)
+  return { ok: true, name }
 }
 </script>
 

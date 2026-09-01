@@ -4,6 +4,7 @@ import type { ProjectDoc } from '../editor/types'
 export interface ProjectMeta {
   projectId: string
   name: string
+  docVersion?: number
 }
 
 export async function loadProject(projectId: string): Promise<ProjectDoc | null> {
@@ -19,11 +20,11 @@ export async function loadProject(projectId: string): Promise<ProjectDoc | null>
   return d?.exists && d?.state ? d.state : null
 }
 
-export async function saveProject(projectId: string, doc: ProjectDoc): Promise<void> {
+export async function saveProject(projectId: string, doc: ProjectDoc, manual = false): Promise<void> {
   await fetch('/api/project/save', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ projectId, state: doc }),
+    body: JSON.stringify({ projectId, state: doc, docVersion: doc.docVersion, manual }),
   })
 }
 

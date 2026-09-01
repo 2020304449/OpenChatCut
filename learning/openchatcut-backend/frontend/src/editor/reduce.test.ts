@@ -578,7 +578,10 @@ describe('项目级 多时间线 create/switch/duplicate/delete', () => {
 
     const nextDoc = defaultProject()
     h = historyReduce(h, { type: 'set_project_doc', doc: nextDoc })
-    expect(h.present).toBe(nextDoc)
+    // set_project_doc 也必须维持单调 docVersion，避免旧快照回退 OCC 版本。
+    expect(h.present).not.toBe(nextDoc)
+    expect(h.present.docVersion).toBeGreaterThan(1)
+    expect({ ...h.present, docVersion: nextDoc.docVersion }).toEqual(nextDoc)
   })
 })
 

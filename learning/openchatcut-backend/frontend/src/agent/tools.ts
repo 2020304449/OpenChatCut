@@ -18,6 +18,7 @@ import {
   type TranscriptVariant,
   type TranscriptWord,
 } from '../editor/types'
+export { BROWSER_EDIT_TOOL_NAMES, SUPPORTED_TOOL_NAMES } from './toolSchemas'
 
 // 工具执行上下文：browser 权威的唯一真源（真库 store 或 edit-session 的 draft）。
 export interface ToolContext {
@@ -30,6 +31,9 @@ export type ExecuteTool = (
   args: Record<string, unknown>,
   ctx: ToolContext,
 ) => Record<string, unknown>
+
+// 该函数同时服务真实 store 和 Proposal 草稿：调用方通过 ctx 注入不同的 getDoc/commands，
+// 因而同一套 handler 可以先试运行再一次性提交，不需要复制一份“草稿版”业务逻辑。
 
 // ── 参数取值 helper ────────────────────────────────────────────────────────
 
@@ -100,6 +104,7 @@ function wordsFrom(v: unknown): TranscriptWord[] {
 // ── executeTool ────────────────────────────────────────────────────────────
 
 export function executeTool(name: string, args: Record<string, unknown>, ctx: ToolContext): Record<string, unknown> {
+  // 每个分支都返回可序列化结果；Proposal 用 ok 字段判断是否整体回滚，SSE 用同一结果回灌模型。
   switch (name) {
     // ── 只读 ──
     case 'read_timeline':
@@ -677,80 +682,13 @@ export function executeTool(name: string, args: Record<string, unknown>, ctx: To
       return { ok: false, error: `unknown action: ${action}` }
     }
 
-    // TODO(生成/导出类工具)：transcribe_track / probe_media / submit_* 等 20 个是
-    // server 端重插件（mock 存根），不经 browser 权威，由 generation_tools.py 直接处理。
+    // submit_export 由 bridge 在用户审批后执行；编辑 handler 不直接触发网络副作用。
     default:
-      return { ok: false, error: `tool not implemented: ${name}` }
+      return {
+        ok: false,
+        error: name === 'submit_export'
+          ? 'submit_export 需要通过审批流程执行'
+          : `tool not implemented: 不支持的编辑工具：${name}`,
+      }
   }
 }
-
-// executeTool 实现覆盖的工具名清单（3 只读 + 44 编辑）。
-// 20 个生成/导出类工具（submit_*/transcribe_track/probe_media/...）走 server 端，不在其中。
-// 工具清单一致性校验的「前端单源」：新增编辑工具需同时改后端 TOOLS + 本清单 + executeTool case，
-// 漏同步会被 tools.test.ts 的一致性测试抓住。
-export const SUPPORTED_TOOL_NAMES: readonly string[] = [
-  // 只读
-  'read_timeline',
-  'read_project',
-  'read_transcript',
-  // 轨道
-  'edit_track',
-  // 片段基础
-  'edit_item',
-  'remove_item',
-  'clear_timeline',
-  'duplicate_item',
-  'split_clip',
-  'move_item',
-  'set_item_timing',
-  'update_item_props',
-  // 片段属性
-  'set_clip_volume',
-  'set_clip_fade',
-  'set_clip_transform',
-  'set_clip_filters',
-  'set_clip_speed',
-  'set_clip_zoom',
-  'set_clip_effects',
-  // 转场
-  'add_transition',
-  'edit_transition',
-  // 字幕
-  'edit_captions',
-  // 关键帧
-  'set_keyframe',
-  'remove_keyframe',
-  'clear_keyframes',
-  // 标记
-  'manage_markers',
-  // 选择
-  'select_clips',
-  // 素材池
-  'manage_media_pool',
-  'list_audio',
-  'add_audio',
-  // 撤销/重做
-  'undo_last_change',
-  'redo_last_change',
-  // 转写
-  'set_item_transcript',
-  'clean_script',
-  'delete_text',
-  'manage_transcript',
-  // 片段属性补充
-  'slip_item',
-  'set_background_fill',
-  'replace_media',
-  'update_watermark',
-  'set_item_denoise',
-  'set_reframe_keyframe',
-  // 项目级
-  'manage_timelines',
-  'edit_asset',
-  'set_design_style',
-  'set_full_state',
-  // 多机位
-  'set_aspect_ratio',
-  'change_cam',
-  'manage_link_group',
-]

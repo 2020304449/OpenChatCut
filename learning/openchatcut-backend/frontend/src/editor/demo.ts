@@ -4,6 +4,7 @@ import type { ProjectDoc } from './types'
 
 export function demoProject(): ProjectDoc {
   return {
+    docVersion: 1,
     version: 1,
     assets: [
       { id: 'a1', name: '花 (flower)', kind: 'video', src: '/media/sample-1.mp4', durationInFrames: 150, width: 1280, height: 720 },

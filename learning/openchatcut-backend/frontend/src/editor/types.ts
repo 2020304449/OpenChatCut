@@ -235,6 +235,9 @@ export interface Timeline {
 }
 
 export interface ProjectDoc {
+  /** 工程内容的单调 OCC 版本；任何真实变更（含撤销/重做）都只能递增。 */
+  docVersion: number
+  /** 兼容旧编辑器的格式版本，不参与 Agent 并发判断。 */
   version: number
   assets: MediaAsset[]
   mediaFolders?: MediaFolder[]
@@ -244,10 +247,11 @@ export interface ProjectDoc {
 }
 
 export function activeTimeline(doc: ProjectDoc): Timeline {
+  // 旧存档可能引用已删除时间线；回退到首条让读取工具仍能返回可用摘要。
   return doc.timelines.find((t) => t.id === doc.activeTimelineId) ?? doc.timelines[0]
 }
 
 export function defaultProject(): ProjectDoc {
   const tl: Timeline = { id: 'tl1', name: '时间线 1', order: 0, fps: 30, items: [], transitions: [], markers: [], captions: null }
-  return { version: 1, assets: [], timelines: [tl], activeTimelineId: 'tl1' }
+  return { docVersion: 1, version: 1, assets: [], timelines: [tl], activeTimelineId: 'tl1' }
 }
