@@ -99,14 +99,15 @@ async function postJson(path: string, body: Record<string, unknown>): Promise<Re
 }
 
 async function settleProposal(runId: string, result: ProposalResult | Record<string, unknown>): Promise<void> {
-  await postJson(`/api/agent-runs/${runId}/settle-proposal`, {
+  await postJson('/api/agent-runs/settle-proposal', {
+    runId,
     proposalId: String(result.proposalId ?? ''),
     result,
   })
 }
 
 async function approve(runId: string, proposalId: string, decision: 'approved' | 'rejected'): Promise<void> {
-  await postJson(`/api/agent-runs/${runId}/approval`, { proposalId, decision })
+  await postJson('/api/agent-runs/approval', { runId, proposalId, decision })
 }
 
 /**
@@ -118,7 +119,9 @@ export async function streamServerRun(
   proposalCoordinator: ProposalCoordinator,
   handlers: ServerRunHandlers,
 ): Promise<void> {
-  const response = await fetch(`/api/agent-runs/${runId}/events`, { headers: { Accept: 'text/event-stream' } })
+  const response = await fetch(`/api/agent-runs/events?runId=${encodeURIComponent(runId)}`, {
+    headers: { Accept: 'text/event-stream' },
+  })
   if (!response.ok || !response.body) throw new Error(`events HTTP ${response.status}`)
 
   const reader = response.body.getReader()
